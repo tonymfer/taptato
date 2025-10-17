@@ -19,25 +19,25 @@ export function TutorialDialog({ open, onClose }: TutorialDialogProps) {
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[85vh] bg-gray-900 text-white border-4 border-green-600 overflow-hidden flex flex-col">
         <DialogHeader className="flex-shrink-0">
-          <DialogTitle className="font-pixel-title text-xl text-amber-400">
+          <DialogTitle className="font-pixel-title text-2xl text-amber-400">
             🥔 Welcome to TapTato!
           </DialogTitle>
-          <DialogDescription className="font-pixel-body text-base text-gray-300">
+          <DialogDescription className="font-pixel-body text-lg text-gray-300">
             Base Account Demo - Zero-Popup Farming
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6 font-pixel-body text-sm text-gray-200 overflow-y-auto pr-4 flex-1">
+        <div className="space-y-6 font-pixel-body text-base text-gray-200 overflow-y-auto pr-4 flex-1">
           {/* What is this */}
           <div className="bg-blue-900/30 p-4 rounded-lg border-2 border-blue-600">
-            <h3 className="font-pixel-subtitle text-sm text-blue-400 mb-2">
+            <h3 className="font-pixel-subtitle text-lg text-blue-400 mb-3">
               🚀 What is this?
             </h3>
             <p className="leading-relaxed">
               This is a demo showcasing{" "}
               <strong>Base Account's powerful features</strong>:
             </p>
-            <ul className="list-disc list-inside mt-2 space-y-1 text-xs">
+            <ul className="list-disc list-inside mt-2 space-y-1 text-sm">
               <li>
                 <strong>Sub Accounts</strong> - Seamless transactions
               </li>
@@ -49,14 +49,14 @@ export function TutorialDialog({ open, onClose }: TutorialDialogProps) {
                 <strong>Server Wallets</strong> - CDP-powered rewards
               </li>
             </ul>
-            <p className="mt-3 text-amber-400 text-xs">
+            <p className="mt-3 text-amber-400 text-sm">
               ✅ Running on <strong>Base Sepolia testnet</strong> - Play freely!
             </p>
           </div>
 
           {/* Growth Stages */}
           <div>
-            <h3 className="font-pixel-subtitle text-sm text-green-400 mb-3">
+            <h3 className="font-pixel-subtitle text-lg text-green-400 mb-3">
               🌱 Growth Stages
             </h3>
             <div className="flex items-center justify-center gap-3 bg-gray-800/50 p-4 rounded-lg">
@@ -68,7 +68,7 @@ export function TutorialDialog({ open, onClose }: TutorialDialogProps) {
                   height={48}
                   className="pixelated mx-auto"
                 />
-                <p className="text-xs mt-1">Seed</p>
+                <p className="text-sm mt-1">Seed</p>
               </div>
               <span className="text-2xl">→</span>
               <div className="text-center">
@@ -79,7 +79,7 @@ export function TutorialDialog({ open, onClose }: TutorialDialogProps) {
                   height={48}
                   className="pixelated mx-auto"
                 />
-                <p className="text-xs mt-1">Sprout</p>
+                <p className="text-sm mt-1">Sprout</p>
               </div>
               <span className="text-2xl">→</span>
               <div className="text-center">
@@ -90,7 +90,7 @@ export function TutorialDialog({ open, onClose }: TutorialDialogProps) {
                   height={48}
                   className="pixelated mx-auto"
                 />
-                <p className="text-xs mt-1">Mid</p>
+                <p className="text-sm mt-1">Mid</p>
               </div>
               <span className="text-2xl">→</span>
               <div className="text-center">
@@ -101,7 +101,7 @@ export function TutorialDialog({ open, onClose }: TutorialDialogProps) {
                   height={48}
                   className="pixelated mx-auto"
                 />
-                <p className="text-xs mt-1 text-green-400">Ripe!</p>
+                <p className="text-sm mt-1 text-green-400">Ripe!</p>
               </div>
               <span className="text-2xl">→</span>
               <div className="text-center">
@@ -112,36 +112,36 @@ export function TutorialDialog({ open, onClose }: TutorialDialogProps) {
                   height={48}
                   className="pixelated mx-auto"
                 />
-                <p className="text-xs mt-1 text-red-400">Rotten</p>
+                <p className="text-sm mt-1 text-red-400">Rotten</p>
               </div>
             </div>
           </div>
 
           {/* How to Play */}
           <div>
-            <h3 className="font-pixel-subtitle text-sm text-amber-400 mb-3">
+            <h3 className="font-pixel-subtitle text-lg text-amber-400 mb-3">
               🎮 How to Play
             </h3>
-            <div className="space-y-3 text-xs bg-gray-800/50 p-4 rounded-lg">
+            <div className="space-y-4 text-base bg-gray-800/50 p-4 rounded-lg">
               <div>
-                <strong className="text-green-400">
+                <strong className="text-green-400 text-lg">
                   1. Plant ($0.01 USDC)
                 </strong>
-                <p className="text-gray-400 ml-4">
+                <p className="text-gray-400 ml-4 mt-1">
                   Hover empty plot → See seed → Click to plant
                 </p>
               </div>
               <div>
-                <strong className="text-blue-400">2. Wait (20 seconds)</strong>
-                <p className="text-gray-400 ml-4">
+                <strong className="text-blue-400 text-lg">2. Wait (20 seconds)</strong>
+                <p className="text-gray-400 ml-4 mt-1">
                   Watch your potato grow: seed → sprout → mid → ripe
                 </p>
               </div>
               <div>
-                <strong className="text-amber-400">
+                <strong className="text-amber-400 text-lg">
                   3. Harvest (Timing matters!)
                 </strong>
-                <div className="ml-4 mt-1 space-y-1 text-gray-400">
+                <div className="ml-4 mt-2 space-y-2 text-gray-400">
                   <p>
                     🏆 <strong className="text-green-400">Perfect (±2s)</strong>
                     : Get $0.02 (+100% bonus!)
@@ -163,8 +163,8 @@ export function TutorialDialog({ open, onClose }: TutorialDialogProps) {
                 </div>
               </div>
               <div>
-                <strong className="text-red-400">4. Rotten? Clear it!</strong>
-                <p className="text-gray-400 ml-4">
+                <strong className="text-red-400 text-lg">4. Rotten? Clear it!</strong>
+                <p className="text-gray-400 ml-4 mt-1">
                   Hover rotten plot → "Clear" → Remove it
                 </p>
               </div>
@@ -173,10 +173,10 @@ export function TutorialDialog({ open, onClose }: TutorialDialogProps) {
 
           {/* Tips */}
           <div className="bg-purple-900/30 p-4 rounded-lg border-2 border-purple-600">
-            <h3 className="font-pixel-subtitle text-sm text-purple-400 mb-2">
+            <h3 className="font-pixel-subtitle text-lg text-purple-400 mb-3">
               💡 Pro Tips
             </h3>
-            <ul className="text-xs space-y-1 text-gray-300">
+            <ul className="text-base space-y-2 text-gray-300">
               <li>✨ First plant: 1 popup for Auto Spend Permission</li>
               <li>🚀 After that: No popups! Plant as many as you want</li>
               <li>📦 Click 3 plots quickly = Batch transaction!</li>
@@ -189,7 +189,7 @@ export function TutorialDialog({ open, onClose }: TutorialDialogProps) {
         <div className="flex-shrink-0 pt-4 border-t-2 border-gray-700">
           <button
             onClick={onClose}
-            className="w-full font-pixel-body text-base py-3 bg-green-700 hover:bg-green-600 text-white rounded-lg border-4 border-green-500 shadow-xl transition-colors"
+            className="w-full font-pixel-body text-lg py-4 bg-green-700 hover:bg-green-600 text-white rounded-lg border-4 border-green-500 shadow-xl transition-colors"
           >
             Got it! Let's Farm 🥔
           </button>
