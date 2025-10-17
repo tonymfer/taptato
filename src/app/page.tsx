@@ -22,6 +22,7 @@ import {
   useConnect,
   useConnections,
   useDisconnect,
+  useWriteContract,
 } from "wagmi";
 
 // Server Wallet Address (CDP account that manages rewards)
@@ -33,25 +34,75 @@ function App() {
   const { connectors, connect } = useConnect();
   const { disconnect } = useDisconnect();
   const connections = useConnections();
+  const { writeContractAsync } = useWriteContract();
 
   // Get universal and sub accounts
-  const [_subAccount, universalAccount] = useMemo(() => {
+  const [subAccount, universalAccount] = useMemo(() => {
     return connections.flatMap((connection) => connection.accounts);
   }, [connections]);
 
   // Get universal account balance
-  const { data: universalBalance, refetch: refetchBalance } = useBalance({
+  const {
+    data: universalBalance,
+    refetch: refetchBalance,
+    isLoading: isLoadingUniversalBalance,
+  } = useBalance({
     address: universalAccount,
     token: USDC.address,
     query: {
-      refetchInterval: 2000,
+      refetchInterval: false, // Don't auto-refetch, only on demand
       enabled: !!universalAccount,
     },
   });
 
+  // Get sub account balance (for debugging)
+  const {
+    data: subAccountBalance,
+    refetch: refetchSubBalance,
+    isLoading: isLoadingSubBalance,
+  } = useBalance({
+    address: subAccount,
+    token: USDC.address,
+    query: {
+      refetchInterval: false, // Don't auto-refetch, only on demand
+      enabled: !!subAccount,
+    },
+  });
+
+  // Get sub account ETH balance (for gas)
+  const { data: subAccountEthBalance, isLoading: isLoadingSubEth } = useBalance(
+    {
+      address: subAccount,
+      query: {
+        refetchInterval: false,
+        enabled: !!subAccount,
+      },
+    }
+  );
+
+  // Get universal account ETH balance
+  const { data: universalEthBalance, isLoading: isLoadingUniversalEth } =
+    useBalance({
+      address: universalAccount,
+      query: {
+        refetchInterval: false,
+        enabled: !!universalAccount,
+      },
+    });
+
+  // Check if balances are still loading (only initial load, not refetching)
+  const isLoadingBalances =
+    isLoadingUniversalBalance ||
+    isLoadingSubBalance ||
+    isLoadingSubEth ||
+    isLoadingUniversalEth;
+
   // Check faucet eligibility
   const faucetEligibility = useFaucetEligibility(universalBalance?.value);
   const faucetMutation = useFaucet();
+
+  // Transfer state
+  const [isTransferring, setIsTransferring] = useState(false);
 
   // Zustand game state
   const { plots, startPlanting, plant, harvest } = useGameStore();
@@ -97,6 +148,15 @@ function App() {
     }
   }, []);
 
+  // Refetch balances when accounts change (e.g., after connecting wallet)
+  useEffect(() => {
+    if (universalAccount || subAccount) {
+      console.log("🔄 Accounts detected, fetching initial balances...");
+      refetchBalance();
+      refetchSubBalance();
+    }
+  }, [universalAccount, subAccount, refetchBalance, refetchSubBalance]);
+
   const closeTutorial = useCallback(() => {
     localStorage.setItem("taptato-tutorial-seen", "true");
     setShowTutorial(false);
@@ -111,10 +171,87 @@ function App() {
     );
   }, []);
 
+  // Transfer USDC from Universal to Sub account
+  const transferToSubAccount = useCallback(
+    async (amount: bigint) => {
+      if (!subAccount || !universalAccount) {
+        toast.error("❌ Account Error", {
+          description: "Accounts not found",
+        });
+        return false;
+      }
+
+      try {
+        setIsTransferring(true);
+        console.log(
+          `💸 Transferring ${amount} USDC from Universal to Sub account...`
+        );
+
+        // Use writeContractAsync to transfer USDC
+        const hash = await writeContractAsync({
+          address: USDC.address,
+          abi: erc20Abi,
+          functionName: "transfer",
+          args: [subAccount, amount],
+          account: universalAccount, // Transfer from universal account
+        });
+
+        console.log("✅ Transfer successful:", hash);
+
+        // Wait for blockchain confirmation before refetching balance
+        await new Promise((resolve) => setTimeout(resolve, 3000));
+
+        // Refetch balances
+        await refetchBalance();
+        await refetchSubBalance();
+        console.log("💰 Balances updated after transfer");
+
+        return true;
+      } catch (error) {
+        console.error("❌ Transfer failed:", error);
+        toast.error("❌ Transfer Failed", {
+          description: "Could not transfer USDC to sub account",
+        });
+        return false;
+      } finally {
+        setIsTransferring(false);
+      }
+    },
+    [
+      subAccount,
+      universalAccount,
+      writeContractAsync,
+      refetchBalance,
+      refetchSubBalance,
+    ]
+  );
+
   // Execute plant for queued plots using wallet_sendCalls (Base Account batching!)
   const executePlantBatch = useCallback(
     async (plotIds: number[]) => {
       if (!account.address || plotIds.length === 0) return;
+
+      // 🔍 CRITICAL: Wait for balances to load before attempting transaction
+      if (isLoadingBalances) {
+        console.warn(
+          "⚠️ [WARNING] Balances still loading, requeuing transaction..."
+        );
+
+        // Re-add to queue and retry after delay
+        plotIds.forEach((id) => {
+          if (!plantQueueRef.current.includes(id)) {
+            plantQueueRef.current.push(id);
+          }
+        });
+
+        // Retry after balance loads
+        setTimeout(() => {
+          const queueToProcess = [...plantQueueRef.current];
+          plantQueueRef.current = [];
+          executePlantBatch(queueToProcess);
+        }, 1000);
+        return;
+      }
 
       // 🔍 DEBUG: Check if batch is already processing using ref
       console.log(
@@ -180,37 +317,165 @@ function App() {
         // 🔍 CRITICAL DEBUG: Environment and account verification
         console.log("=".repeat(50));
         console.log("🔍 [CRITICAL] Environment Check:");
-        console.log(`  - Account Address: ${account.address}`);
+        console.log(`  - Account Address (from TX): ${account.address}`);
+        console.log(`  - Sub Account: ${subAccount}`);
         console.log(`  - Universal Account: ${universalAccount}`);
         console.log(`  - USDC Contract: ${USDC.address}`);
         console.log(`  - Server Wallet: ${SERVER_WALLET_ADDRESS}`);
         console.log(`  - USDC Decimals: ${USDC.decimals}`);
+        console.log(`  - Balances Loading: ${isLoadingBalances}`);
         console.log("=".repeat(50));
 
-        // 🔍 DEBUG: Check USDC balance before batch
+        // 🔍 CRITICAL: Check BOTH account balances
         const totalCost = 0.01 * plotIds.length;
+        console.log("🔍 [CRITICAL] Balance Check:");
         console.log(
-          `🔍 [DEBUG] USDC Balance (formatted): ${universalBalance?.formatted || "N/A"}`
+          `  - Universal Account Balance: ${universalBalance?.formatted || "N/A"} USDC (raw: ${universalBalance?.value?.toString() || "N/A"})`
         );
         console.log(
-          `🔍 [DEBUG] USDC Balance (raw): ${universalBalance?.value?.toString() || "N/A"}`
+          `  - Universal Account ETH: ${universalEthBalance?.formatted || "N/A"} ETH`
         );
-        console.log(`🔍 [DEBUG] Total cost: ${totalCost} USDC`);
         console.log(
-          `🔍 [DEBUG] Balance sufficient: ${
+          `  - Sub Account Balance: ${subAccountBalance?.formatted || "N/A"} USDC (raw: ${subAccountBalance?.value?.toString() || "N/A"})`
+        );
+        console.log(
+          `  - Sub Account ETH: ${subAccountEthBalance?.formatted || "N/A"} ETH (for gas)`
+        );
+        console.log(`  - Transaction cost: ${totalCost} USDC`);
+        console.log(
+          `  - Paymaster URL configured: ${!!process.env.NEXT_PUBLIC_PAYMASTER_SERVICE_URL}`
+        );
+        console.log(
+          `  - Universal has enough: ${
             parseFloat(universalBalance?.formatted || "0") >= totalCost
           }`
         );
+        console.log(
+          `  - Sub Account has enough: ${
+            parseFloat(subAccountBalance?.formatted || "0") >= totalCost
+          }`
+        );
 
-        // 🔍 CRITICAL: Verify we're actually using the right account
-        if (
-          universalBalance?.value === undefined ||
-          universalBalance?.value === 0n
-        ) {
-          console.error("❌ [CRITICAL] Zero or undefined balance detected!");
-          throw new Error(
-            "Insufficient USDC balance. Please fund your account first."
+        // 🔍 CRITICAL: Verify the FROM account (account.address) has balance
+        // account.address should match either subAccount or universalAccount
+        console.log("=".repeat(50));
+        console.log("🔍 [CRITICAL] Account Address Analysis:");
+        console.log(`  - TX will be from: ${account.address}`);
+        console.log(`  - Is Sub Account? ${account.address === subAccount}`);
+        console.log(
+          `  - Is Universal Account? ${account.address === universalAccount}`
+        );
+
+        // The account that will send the TX needs to have the balance
+        const senderBalance =
+          account.address === universalAccount
+            ? universalBalance?.value
+            : subAccountBalance?.value;
+
+        console.log(
+          `  - Sender's USDC balance: ${senderBalance?.toString() || "0"}`
+        );
+
+        const senderEthBalance =
+          account.address === universalAccount
+            ? universalEthBalance?.value
+            : subAccountEthBalance?.value;
+        console.log(
+          `  - Sender's ETH balance: ${senderEthBalance?.toString() || "0"} (${parseFloat((Number(senderEthBalance || 0n) / 1e18).toFixed(6))} ETH)`
+        );
+        console.log("=".repeat(50));
+
+        // 🔍 CRITICAL: Check if Paymaster is configured
+        if (!process.env.NEXT_PUBLIC_PAYMASTER_SERVICE_URL) {
+          console.warn(
+            "⚠️ [WARNING] No Paymaster configured! Gas must be paid by sender account."
           );
+          console.warn(
+            `  - Sender needs ETH for gas. Current: ${parseFloat((Number(senderEthBalance || 0n) / 1e18).toFixed(6))} ETH`
+          );
+
+          if (!senderEthBalance || senderEthBalance === 0n) {
+            console.error("❌ [CRITICAL] No Paymaster AND no ETH for gas!");
+            throw new Error(
+              `No gas sponsorship configured and sender account has 0 ETH. Either:\n` +
+                `1. Set NEXT_PUBLIC_PAYMASTER_SERVICE_URL in Vercel environment variables, OR\n` +
+                `2. Send ETH to ${account.address} for gas fees`
+            );
+          }
+        }
+
+        // 🔍 CRITICAL: Check if sender (sub account) has enough balance
+        const requiredAmount = parseUnits(totalCost.toString(), USDC.decimals);
+
+        if (
+          senderBalance === undefined ||
+          Number(senderBalance) < Number(requiredAmount)
+        ) {
+          const currentBalance = Number(senderBalance || 0n);
+          const needed = Number(requiredAmount) - currentBalance;
+
+          console.warn("⚠️ [WARNING] Sub account has insufficient balance!");
+          console.warn(
+            `  - Current: ${currentBalance} (${parseFloat((currentBalance / 1e6).toFixed(6))} USDC)`
+          );
+          console.warn(
+            `  - Needed: ${needed} (${parseFloat((needed / 1e6).toFixed(6))} USDC)`
+          );
+
+          // 🔍 Check if Universal account has enough
+          const universalUSDC = Number(universalBalance?.value || 0n);
+          console.log(
+            `  - Universal Account has: ${universalUSDC} (${parseFloat((universalUSDC / 1e6).toFixed(6))} USDC)`
+          );
+
+          if (universalUSDC >= needed) {
+            console.log(
+              "💸 [AUTO-TRANSFER] Transferring USDC from Universal to Sub account..."
+            );
+
+            toast.info("💸 Transferring USDC...", {
+              description: `Moving ${parseFloat((needed / 1e6).toFixed(2))} USDC to sub account`,
+              duration: 3000,
+            });
+
+            // Transfer from Universal to Sub
+            const transferSuccess = await transferToSubAccount(BigInt(needed));
+
+            if (!transferSuccess) {
+              console.error("❌ [CRITICAL] Auto-transfer failed!");
+              throw new Error(
+                `Could not transfer USDC to sub account. Please use the Fund button.`
+              );
+            }
+
+            console.log(
+              "✅ [AUTO-TRANSFER] Transfer successful! Proceeding with plant..."
+            );
+            toast.success("✅ Transfer Complete!", {
+              description: "Proceeding with planting...",
+              duration: 2000,
+            });
+
+            // Balance was already updated in transferToSubAccount
+            // Just verify it's reflected
+            console.log(
+              `💰 Sub account balance after auto-transfer: ${subAccountBalance?.formatted}`
+            );
+          } else {
+            console.error(
+              "❌ [CRITICAL] Not enough USDC in Universal account!"
+            );
+            console.error(
+              `  - Universal has: ${universalUSDC} (${parseFloat((universalUSDC / 1e6).toFixed(6))} USDC)`
+            );
+            console.error(
+              `  - Needed: ${needed} (${parseFloat((needed / 1e6).toFixed(6))} USDC)`
+            );
+
+            throw new Error(
+              `Insufficient USDC. Need ${parseFloat((needed / 1e6).toFixed(2))} USDC more. Please use the Fund button to get USDC.`
+            );
+          }
         }
 
         toast.info(
@@ -370,7 +635,12 @@ function App() {
           }
         );
 
-        refetchBalance();
+        // Wait for blockchain confirmation before refetching balance
+        setTimeout(async () => {
+          await refetchBalance();
+          await refetchSubBalance();
+          console.log("💰 Balance updated after plant");
+        }, 2000);
       } catch (error: any) {
         console.error("=".repeat(50));
         console.error("❌ [CRITICAL] Batch plant failed!");
@@ -385,9 +655,15 @@ function App() {
         console.error("🔍 [DEBUG] Failed plot IDs:", plotIds);
         console.error("🔍 [DEBUG] Account state:", {
           address: account.address,
+          subAccount: subAccount,
           universalAccount: universalAccount,
-          balance: universalBalance?.formatted,
-          rawBalance: universalBalance?.value?.toString(),
+          universalUSDC: universalBalance?.formatted,
+          universalUSDCRaw: universalBalance?.value?.toString(),
+          universalETH: universalEthBalance?.formatted,
+          subAccountUSDC: subAccountBalance?.formatted,
+          subAccountUSDCRaw: subAccountBalance?.value?.toString(),
+          subAccountETH: subAccountEthBalance?.formatted,
+          paymasterConfigured: !!process.env.NEXT_PUBLIC_PAYMASTER_SERVICE_URL,
         });
         console.error("🔍 [DEBUG] Transaction params:", {
           usdcContract: USDC.address,
@@ -425,7 +701,22 @@ function App() {
         console.log("🔍 [DEBUG] isProcessingBatchRef and state set to false");
       }
     },
-    [account.address, plant, harvest, refetchBalance, plots, universalBalance]
+    [
+      account.address,
+      plant,
+      harvest,
+      refetchBalance,
+      refetchSubBalance,
+      plots,
+      universalBalance,
+      subAccountBalance,
+      universalAccount,
+      subAccount,
+      universalEthBalance,
+      subAccountEthBalance,
+      isLoadingBalances,
+      transferToSubAccount,
+    ]
   );
 
   // Plant single plot with debouncing and batching
@@ -436,6 +727,14 @@ function App() {
       if (!account.address) {
         toast.error("🔌 Wallet Not Connected", {
           description: "Please connect your wallet first!",
+        });
+        return;
+      }
+
+      if (isLoadingBalances) {
+        toast.info("⏳ Loading Balance...", {
+          description: "Please wait while we fetch your balance",
+          duration: 2000,
         });
         return;
       }
@@ -495,7 +794,7 @@ function App() {
         executePlantBatch(queueToProcess);
       }, 500);
     },
-    [account.address, startPlanting, executePlantBatch]
+    [account.address, startPlanting, executePlantBatch, isLoadingBalances]
   );
 
   // Harvest single plot
@@ -587,7 +886,12 @@ function App() {
           duration: data.tier === "Perfect" ? 5000 : 3000,
         });
 
-        refetchBalance();
+        // Wait for blockchain confirmation before refetching balance
+        setTimeout(async () => {
+          await refetchBalance();
+          await refetchSubBalance();
+          console.log("💰 Balance updated after harvest");
+        }, 2000);
       } catch (error: any) {
         console.error("❌ Harvest error:", error);
         toast.error("❌ Harvest Failed!", {
@@ -596,7 +900,7 @@ function App() {
         });
       }
     },
-    [account.address, plots, harvest, refetchBalance]
+    [account.address, plots, harvest, refetchBalance, refetchSubBalance]
   );
 
   // Batch plant
@@ -626,11 +930,11 @@ function App() {
     setSelectedPlots([]);
   }, [selectedPlots, plots, currentTime, handleHarvestSingle]);
 
-  // Fund account
+  // Fund account - Get USDC from faucet and transfer to Sub
   const handleFundAccount = useCallback(async () => {
-    if (!universalAccount) {
+    if (!universalAccount || !subAccount) {
       toast.error("❌ Account Error", {
-        description: "No universal account found",
+        description: "Accounts not found",
       });
       return;
     }
@@ -644,18 +948,52 @@ function App() {
     }
 
     const fundingToastId = toast.loading("💰 Requesting USDC...", {
-      description: "⏳ Connecting to faucet...",
+      description: "⏳ Step 1/2: Getting USDC from faucet...",
     });
 
     faucetMutation.mutate(
       { address: universalAccount },
       {
-        onSuccess: () => {
-          toast.dismiss(fundingToastId);
-          toast.success("✨ Account Funded!", {
-            description: "💰 USDC received! Start planting!",
-            duration: 4000,
+        onSuccess: async () => {
+          toast.loading("💸 Transferring to Sub Account...", {
+            id: fundingToastId,
+            description: "⏳ Step 2/2: Moving USDC to your sub account...",
           });
+
+          // Wait for faucet transaction to settle
+          await new Promise((resolve) => setTimeout(resolve, 4000));
+          await refetchBalance();
+
+          // Refetch again to get updated balance
+          const balanceResult = await refetchBalance();
+          const universalUSDC = balanceResult.data?.value || 0n;
+
+          console.log(`💰 Universal balance after faucet: ${universalUSDC}`);
+
+          // Transfer all USDC from Universal to Sub
+          if (universalUSDC > 0n) {
+            const success = await transferToSubAccount(universalUSDC);
+
+            toast.dismiss(fundingToastId);
+            if (success) {
+              toast.success("✨ Account Funded!", {
+                description: `💰 ${parseFloat((Number(universalUSDC) / 1e6).toFixed(2))} USDC transferred to sub account! Start planting!`,
+                duration: 4000,
+              });
+            }
+          } else {
+            toast.dismiss(fundingToastId);
+            toast.success("✨ USDC Received!", {
+              description: "💰 Waiting for confirmation...",
+              duration: 4000,
+            });
+
+            // Try refetching one more time after a delay
+            setTimeout(async () => {
+              await refetchBalance();
+              await refetchSubBalance();
+            }, 3000);
+          }
         },
         onError: (error) => {
           toast.dismiss(fundingToastId);
@@ -666,7 +1004,16 @@ function App() {
         },
       }
     );
-  }, [universalAccount, faucetMutation, faucetEligibility]);
+  }, [
+    universalAccount,
+    subAccount,
+    faucetMutation,
+    faucetEligibility,
+    refetchBalance,
+    refetchSubBalance,
+    universalBalance,
+    transferToSubAccount,
+  ]);
 
   // Prepare plot data with visual states
   const plotData = plots.map((plot) => ({
@@ -736,18 +1083,27 @@ function App() {
             {account.status === "connected" ? (
               <>
                 <div className="font-pixel-body text-sm text-green-400">
-                  {universalBalance?.formatted.slice(0, 6)} USDC
+                  {isLoadingBalances ? (
+                    <span className="animate-pulse">Loading...</span>
+                  ) : (
+                    `${subAccountBalance?.formatted.slice(0, 6) || "0"} USDC`
+                  )}
                 </div>
                 <Button
                   variant="outline"
                   onClick={handleFundAccount}
                   size="sm"
                   disabled={
-                    faucetMutation.isPending || !faucetEligibility.isEligible
+                    faucetMutation.isPending ||
+                    !faucetEligibility.isEligible ||
+                    isLoadingBalances ||
+                    isTransferring
                   }
                   className="font-pixel-small bg-green-700 hover:bg-green-600 text-white border-green-600"
                 >
-                  {faucetMutation.isPending ? "Funding..." : "Fund"}
+                  {faucetMutation.isPending || isTransferring
+                    ? "Funding..."
+                    : "Fund"}
                 </Button>
                 <Button
                   variant="outline"
@@ -863,7 +1219,11 @@ function App() {
                     💰 Balance
                   </div>
                   <div className="font-pixel-metrics text-4xl font-bold text-green-400 mb-2">
-                    ${universalBalance?.formatted.slice(0, 6) || "0"}
+                    {isLoadingBalances ? (
+                      <span className="animate-pulse">...</span>
+                    ) : (
+                      `$${subAccountBalance?.formatted.slice(0, 6) || "0"}`
+                    )}
                   </div>
                   <div className="font-pixel-body text-sm">
                     <span

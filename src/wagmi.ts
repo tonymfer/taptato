@@ -7,10 +7,10 @@ export function getConfig() {
     chains: [baseSepolia],
     connectors: [
       baseAccount({
-        appName: "Sub Accounts Demo",
+        appName: "TapTato",
         subAccounts: {
           creation: "on-connect",
-          defaultAccount: "sub",
+          defaultAccount: "sub", // Use sub account for transactions
         },
         paymasterUrls: {
           [baseSepolia.id]: process.env
