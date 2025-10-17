@@ -41,6 +41,14 @@ I wanted to prove that **Sub Accounts aren't just a UX improvement — they enab
 
 ## Game Mechanics
 
+### Getting Started
+1. **Connect Wallet** - Base Account wallet connects instantly
+2. **Fund Account** - Click "Fund" button to get test USDC:
+   - First-time: Requests from CDP faucet → Universal Account
+   - Then: Auto-transfers to Sub Account for gameplay
+   - If Universal has USDC: Button shows "Transfer" instead
+3. **Play!** - Balance shown is your Sub Account (spending account)
+
 ### Core Loop
 1. **Plant** potatoes (costs 0.01 USDC per plot)
 2. Wait **20 seconds** for them to grow through 4 visual stages:
@@ -120,6 +128,33 @@ await provider.request({
 ```
 
 **Result:** Plant 3+ plots in a single user action with one signature.
+
+### Account & Fund Management
+
+TapTato uses a **two-account system** for optimal UX:
+
+```typescript
+// Universal Account: Receives USDC from faucet/external sources
+const universalAccount = connections[1];  // EOA-like account
+
+// Sub Account: Used for all game transactions (plant/harvest)
+const subAccount = connections[0];        // Smart wallet with permissions
+```
+
+**Fund Button Flow:**
+1. 💰 **Faucet Request** → USDC sent to Universal Account
+2. 💸 **Auto Transfer** → Automatically moves USDC to Sub Account  
+3. ✅ **Ready to Play** → Sub Account now has USDC for planting
+
+**Auto-Transfer Logic:**
+- When planting, if Sub Account has insufficient USDC
+- Automatically transfers needed amount from Universal Account
+- Seamless UX: player doesn't need to manage two accounts manually
+
+This design ensures:
+- ✅ Faucet compatibility (sends to Universal Account)
+- ✅ Sub Account benefits (zero-popup transactions)
+- ✅ Automatic balance management
 
 ---
 
@@ -207,6 +242,65 @@ await account.transfer({
 
 ---
 
+## Architecture & Tradeoffs
+
+### Frontend-Only State Management
+
+To ship quickly and focus on Sub Account integration, TapTato uses **client-side state management** instead of a backend database:
+
+**State Storage:**
+```typescript
+// Zustand + localStorage
+const useGameStore = create(
+  persist(
+    (set, get) => ({ plots, plant, harvest }),
+    { name: "taptato-game-storage" }
+  )
+);
+```
+
+**Tradeoffs:**
+
+✅ **Pros:**
+- Instant deployment (no database setup)
+- Zero backend costs
+- Fast iteration during development
+- Perfect for demo/prototype
+
+⚠️ **Limitations:**
+- **Cross-device sync**: Game state only on current browser
+- **Refresh reliability**: State persists in localStorage, but blockchain transactions are source of truth
+- **Exploit potential**: Client-side validation only (fine for testnet demo)
+
+### Known Issues
+
+1. **Balance Display Timing**
+   - Balance may take 2-3 seconds to update after plant/harvest
+   - Blockchain confirmation delay (normal behavior)
+   - Simply wait a moment and balance will reflect
+
+2. **Multi-Tab Behavior**
+   - Opening game in multiple tabs may cause state conflicts
+   - Each tab has independent localStorage state
+   - Recommendation: Use single tab per wallet
+
+3. **State Recovery**
+   - If unsure about plot states, simply refresh the page
+   - Or clear localStorage: `localStorage.removeItem('taptato-game-storage')`
+
+### Future Improvements
+
+For a production-ready version, consider:
+
+- 🗄️ **Database Integration**: PostgreSQL/Supabase for multi-device sync
+- 🔐 **Server-Side Validation**: Prevent timing exploits and state manipulation  
+- 📊 **Leaderboard System**: Track top farmers across all players
+- 🎮 **Enhanced Gameplay**: More plot types, upgrades, achievements
+- ⚡ **Optimistic Updates**: Show balance changes immediately, reconcile later
+- 🔔 **Push Notifications**: Alert when potatoes are ripe
+
+---
+
 ## Getting Started
 
 ### Prerequisites
@@ -234,6 +328,7 @@ Create `.env.local`:
 # Required for CDP Server Wallet (reward distribution)
 CDP_API_KEY_ID=your_cdp_api_key_id
 CDP_API_KEY_SECRET=your_cdp_api_key_secret
+CDP_WALLET_SECRET=your_base64_private_key
 
 # Optional: Paymaster for gas sponsorship
 NEXT_PUBLIC_PAYMASTER_SERVICE_URL=https://api.developer.coinbase.com/rpc/v1/base-sepolia/...
@@ -248,8 +343,15 @@ NEXT_PUBLIC_TIER_GOOD_SECS=5
 **Get CDP API Keys:**
 1. Visit [Coinbase Developer Platform](https://portal.cdp.coinbase.com/)
 2. Create a new project
-3. Generate API credentials
-4. Fund your CDP wallet with USDC for rewards
+3. Generate API credentials (download JSON file)
+4. Extract values from the JSON:
+   - `CDP_API_KEY_ID` = `id` field
+   - `CDP_WALLET_SECRET` = `privateKey` field (base64 Ed25519 format)
+   - `CDP_API_KEY_SECRET` = Your API key secret
+5. Fund your CDP server account with USDC:
+   - Use the [CDP Faucet](https://portal.cdp.coinbase.com/products/faucet)
+   - Send USDC to the `taptato-spender` account (check Vercel logs for address)
+   - Recommended: 10+ USDC for ~500 harvests
 
 ### Run the Game
 
@@ -262,11 +364,48 @@ pnpm dev
 
 ### Deploy to Production
 
+**Vercel Deployment (Recommended):**
+
+1. **Push to GitHub:**
+   ```bash
+   git push origin main
+   ```
+
+2. **Import to Vercel:**
+   - Visit [Vercel](https://vercel.com/new)
+   - Import your GitHub repository
+   - Framework: Next.js (auto-detected)
+
+3. **Set Environment Variables:**
+   
+   In Vercel Dashboard → Settings → Environment Variables, add:
+   
+   ```bash
+   CDP_API_KEY_ID=730f5228-... (from your cdp_api_key.json)
+   CDP_API_KEY_SECRET=... (your API key secret)
+   CDP_WALLET_SECRET=6Y3SvJWGRJsrO+nOwj5wyGPpLI5xAPUx6Iy+qcmSfKgrMYVi8JXzlglu6SdgW1hpyV5Znn2kTp6XmjY+0othbg== (from privateKey field)
+   
+   # Optional but recommended for gas sponsorship
+   NEXT_PUBLIC_PAYMASTER_SERVICE_URL=https://api.developer.coinbase.com/rpc/v1/base-sepolia/YOUR_KEY
+   
+   # Optional: Custom game timing
+   NEXT_PUBLIC_GROW_SECS=20
+   NEXT_PUBLIC_HARVEST_WINDOW_SECS=5
+   ```
+   
+   ⚠️ **Important**: Apply to **Production**, **Preview**, and **Development** environments
+
+4. **Deploy & Fund Server Account:**
+   - Deploy completes → Check Vercel Function logs
+   - Find server account address in `/api/harvest` logs
+   - Fund it with USDC using [CDP Faucet](https://portal.cdp.coinbase.com/products/faucet)
+
+**Manual Build:**
 ```bash
 # Build for production
 pnpm build
 
-# Deploy to Vercel, Netlify, or your preferred host
+# Deploy to Netlify or your preferred host
 ```
 
 ---
@@ -588,9 +727,61 @@ Built with inspiration from:
 
 ---
 
+## Quick Start Guide
+
+### For Players
+
+1. **Visit** [https://taptato.vercel.app](https://taptato.vercel.app)
+2. **Connect** your Base Account wallet
+3. **Click Fund** button to get test USDC:
+   - Requests USDC from CDP faucet → Universal Account
+   - Auto-transfers to Sub Account for gameplay
+   - Wait ~5 seconds for confirmation
+4. **Start Playing:**
+   - Click empty plots to plant (costs 0.01 USDC)
+   - Wait 20 seconds for potatoes to grow
+   - Harvest at the perfect moment for 2x bonus!
+
+💡 **Tip**: The balance shown is your **Sub Account** balance (actual spending account). If it shows "Loading..." after connecting, wait a few seconds for blockchain data to load.
+
+### For Developers
+
+**Quick deploy your own instance:**
+
+```bash
+# 1. Clone and setup
+git clone https://github.com/yourusername/taptato.git
+cd taptato && pnpm install
+
+# 2. Get CDP credentials
+# Download from https://portal.cdp.coinbase.com/
+
+# 3. Set environment variables (Vercel or .env.local)
+CDP_API_KEY_ID=<id from JSON>
+CDP_WALLET_SECRET=<privateKey from JSON>
+CDP_API_KEY_SECRET=<your secret>
+
+# 4. Deploy
+vercel --prod
+
+# 5. Fund server account with USDC (check logs for address)
+```
+
+**Common Setup Issues:**
+
+| Issue | Solution |
+|-------|----------|
+| "CDP credentials not configured" | Add all 3 CDP env vars in Vercel |
+| "Invalid key format" | Use `privateKey` from JSON (base64 format) |
+| "Failed to send reward" | Fund CDP server account with USDC |
+| Balance shows 0 after connecting | Wait 3-5 seconds for blockchain data to load |
+| Balance not updating after plant | Normal 2-3s delay for blockchain confirmation |
+
+---
+
 <div align="center">
 
-**[🎮 Play TapTato Now](https://your-demo-url.vercel.app)**
+**[🎮 Play TapTato Now](https://taptato.vercel.app)**
 
 Built with 🥔 for Base Builder Quest #11
 
