@@ -939,6 +939,28 @@ function App() {
       return;
     }
 
+    // Check if Universal account already has USDC to transfer
+    const universalUSDC = Number(universalBalance?.value || 0n);
+
+    if (universalUSDC > 0) {
+      // Just transfer from Universal to Sub
+      const transferToastId = toast.loading("💸 Transferring USDC...", {
+        description: "Moving USDC from universal to sub account...",
+      });
+
+      const success = await transferToSubAccount(universalBalance!.value);
+
+      toast.dismiss(transferToastId);
+      if (success) {
+        toast.success("✨ Transfer Complete!", {
+          description: `💰 ${parseFloat((universalUSDC / 1e6).toFixed(2))} USDC transferred to sub account!`,
+          duration: 4000,
+        });
+      }
+      return;
+    }
+
+    // Need to get USDC from faucet first
     if (!faucetEligibility.isEligible) {
       toast.error("⛔ Faucet Not Available", {
         description: faucetEligibility.reason,
@@ -1095,15 +1117,26 @@ function App() {
                   size="sm"
                   disabled={
                     faucetMutation.isPending ||
-                    !faucetEligibility.isEligible ||
                     isLoadingBalances ||
-                    isTransferring
+                    isTransferring ||
+                    // Disable only if: no USDC in universal AND faucet not eligible
+                    (!(Number(universalBalance?.value || 0n) > 0) &&
+                      !faucetEligibility.isEligible)
                   }
                   className="font-pixel-small bg-green-700 hover:bg-green-600 text-white border-green-600"
+                  title={
+                    Number(universalBalance?.value || 0n) > 0
+                      ? "Transfer USDC from Universal to Sub account"
+                      : faucetEligibility.isEligible
+                        ? "Get USDC from faucet"
+                        : faucetEligibility.reason
+                  }
                 >
                   {faucetMutation.isPending || isTransferring
                     ? "Funding..."
-                    : "Fund"}
+                    : Number(universalBalance?.value || 0n) > 0
+                      ? "Transfer"
+                      : "Fund"}
                 </Button>
                 <Button
                   variant="outline"
