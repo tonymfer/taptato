@@ -72,24 +72,54 @@ export async function POST(request: NextRequest) {
     let txHash = null;
     if (totalPayout > 0) {
       try {
+        // Validate CDP credentials
+        const apiKeyId = process.env.CDP_API_KEY_ID;
+        const apiKeySecret = process.env.CDP_API_KEY_SECRET;
+
+        console.log("🔑 CDP credentials check:");
+        console.log(`  - CDP_API_KEY_ID: ${apiKeyId ? "set" : "missing"}`);
+        console.log(
+          `  - CDP_API_KEY_SECRET: ${apiKeySecret ? "set" : "missing"}`
+        );
+
+        if (!apiKeyId || !apiKeySecret) {
+          throw new Error("CDP credentials not configured");
+        }
+
         // Initialize CDP (automatically reads CDP_API_KEY_ID and CDP_API_KEY_SECRET from env)
+        console.log("Initializing CDP client for harvest...");
         const cdp = new CdpClient();
+        console.log("✅ CDP client initialized");
 
         // Get or create the server account on Base Sepolia
         const accountName = "taptato-spender";
+        console.log(`Getting or creating account: ${accountName}`);
+
         const account = await cdp.evm.getOrCreateAccount({
           name: accountName,
         });
 
-        console.log("Using server account:", account.address);
+        console.log("✅ Using server account:", account.address);
+        console.log(
+          `⚠️ Note: Make sure this account has enough USDC (needs ${totalPayout} USDC)`
+        );
+        console.log(
+          `💡 To fund: https://portal.cdp.coinbase.com/products/faucet`
+        );
 
         // Transfer USDC to user using CDP account.transfer()
         const usdcAmount = parseUnits(totalPayout.toString(), 6); // USDC has 6 decimals
 
+        console.log("💸 Preparing transfer:");
+        console.log(`  - To: ${userAddress}`);
+        console.log(`  - Amount: ${totalPayout} USDC (${usdcAmount} wei)`);
+        console.log(`  - Token: usdc`);
+        console.log(`  - Network: base-sepolia`);
+
         const { transactionHash } = await account.transfer({
           to: userAddress,
           amount: usdcAmount,
-          token: "usdc", // or use token address
+          token: "usdc",
           network: "base-sepolia",
         });
 
@@ -97,9 +127,53 @@ export async function POST(request: NextRequest) {
 
         console.log("✅ USDC sent to user:", txHash);
       } catch (error) {
-        console.error("❌ Failed to send USDC:", error);
+        console.error("❌ Failed to send USDC (full error):", error);
+        console.error("❌ Error type:", typeof error);
+        console.error("❌ Error constructor:", error?.constructor?.name);
+
+        if (error && typeof error === "object") {
+          console.error("❌ Error keys:", Object.keys(error));
+          console.error("❌ Error message:", (error as any).message);
+          console.error("❌ Error response:", (error as any).response);
+          console.error("❌ Error data:", (error as any).data);
+          console.error("❌ Error stack:", (error as any).stack);
+        }
+
+        const errorMessage =
+          error instanceof Error ? error.message : "Unknown error";
+
+        // Provide helpful error messages
+        let userFriendlyMessage = errorMessage;
+        let actionRequired = "";
+
+        if (
+          errorMessage.includes("insufficient") ||
+          errorMessage.includes("balance")
+        ) {
+          userFriendlyMessage = "Server account has insufficient USDC balance.";
+          actionRequired = `Please fund the CDP account 'taptato-spender' with USDC on Base Sepolia using: https://portal.cdp.coinbase.com/products/faucet`;
+        } else if (
+          errorMessage.includes("not found") ||
+          errorMessage.includes("account")
+        ) {
+          userFriendlyMessage = "CDP server account not configured properly.";
+          actionRequired =
+            "Please check CDP_API_KEY_ID and CDP_API_KEY_SECRET environment variables.";
+        }
+
+        console.error("💡 Action required:", actionRequired);
+
         return NextResponse.json(
-          { error: "Failed to send reward" },
+          {
+            error: "Failed to send reward",
+            details: userFriendlyMessage,
+            actionRequired,
+            originalError: errorMessage,
+            debugInfo: {
+              payout: totalPayout,
+              userAddress,
+            },
+          },
           { status: 500 }
         );
       }
