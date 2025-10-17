@@ -12,6 +12,7 @@ import {
   getTimeUntilRotten,
   useGameStore,
 } from "@/store/gameStore";
+import Image from "next/image";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { encodeFunctionData, parseUnits } from "viem";
@@ -438,8 +439,15 @@ function App() {
         <div className="flex justify-between items-center mb-6">
           {/* Left: Title + Help */}
           <div className="flex items-center gap-4">
-            <h1 className="font-pixel-title text-2xl text-amber-400 drop-shadow-lg">
-              🥔 TapTato
+            <h1 className="font-pixel-title text-2xl text-amber-400 drop-shadow-lg flex items-center gap-2">
+              <Image
+                src="/potato.png"
+                alt="Potato"
+                width={32}
+                height={32}
+                className="pixelated"
+              />
+              TapTato
             </h1>
             {/* Help Button */}
             <button
@@ -588,30 +596,55 @@ function App() {
             )}
 
             {/* Simple Stats Bar */}
-            <div className="flex items-center justify-center gap-8 p-4 bg-gray-900/80 backdrop-blur-sm rounded-xl border-2 border-green-600 shadow-lg">
-              <div className="text-center">
-                <div className="font-pixel-metrics text-3xl font-bold text-green-400">
-                  ${universalBalance?.formatted.slice(0, 6) || "0"}
-                </div>
-                <div className="font-pixel-body text-sm mt-2 text-gray-400">
-                  Balance{" "}
-                  <span
-                    className={`font-bold ${
-                      totalPnL >= 0 ? "text-green-400" : "text-red-400"
-                    }`}
-                  >
-                    ({totalPnL >= 0 ? "+" : ""}
-                    {totalPnL.toFixed(2)})
-                  </span>
+            <div className="flex items-center justify-center gap-12 p-6 bg-gradient-to-b from-stone-900/90 to-stone-950/95 backdrop-blur-sm rounded-2xl shadow-2xl">
+              {/* Balance Card */}
+              <div className="relative group">
+                <div className="absolute inset-0 bg-gradient-to-br from-green-500/20 to-emerald-600/20 rounded-xl blur-xl group-hover:blur-2xl transition-all"></div>
+                <div className="relative text-center p-4 bg-stone-800/50 rounded-xl min-w-[200px]">
+                  <div className="font-pixel-body text-xs mb-2 text-green-300/70 uppercase tracking-wider">
+                    💰 Balance
+                  </div>
+                  <div className="font-pixel-metrics text-4xl font-bold text-green-400 mb-2">
+                    ${universalBalance?.formatted.slice(0, 6) || "0"}
+                  </div>
+                  <div className="font-pixel-body text-sm">
+                    <span
+                      className={`font-bold px-2 py-1 rounded ${
+                        totalPnL >= 0
+                          ? "text-green-400 bg-green-500/10"
+                          : "text-red-400 bg-red-500/10"
+                      }`}
+                    >
+                      {totalPnL >= 0 ? "+" : ""}
+                      {totalPnL.toFixed(2)} USDC
+                    </span>
+                  </div>
                 </div>
               </div>
 
-              <div className="text-center">
-                <div className="font-pixel-metrics text-3xl font-bold flex items-center justify-center gap-2 text-amber-400">
-                  🥔 {harvestedCount}
-                </div>
-                <div className="font-pixel-body text-sm mt-2 text-gray-400">
-                  Harvested
+              {/* Divider */}
+              <div className="h-24 w-px bg-gradient-to-b from-transparent via-amber-600/30 to-transparent"></div>
+
+              {/* Harvested Card */}
+              <div className="relative group">
+                <div className="absolute inset-0 bg-gradient-to-br from-amber-500/20 to-orange-600/20 rounded-xl blur-xl group-hover:blur-2xl transition-all"></div>
+                <div className="relative text-center p-4 bg-stone-800/50 rounded-xl min-w-[200px]">
+                  <div className="font-pixel-body text-xs mb-2 text-amber-300/70 uppercase tracking-wider">
+                    🌾 Harvested
+                  </div>
+                  <div className="font-pixel-metrics text-4xl font-bold flex items-center justify-center gap-3 text-amber-400">
+                    <Image
+                      src="/potato.png"
+                      alt="Potato"
+                      width={40}
+                      height={40}
+                      className="pixelated drop-shadow-lg"
+                    />
+                    {harvestedCount}
+                  </div>
+                  <div className="font-pixel-body text-xs mt-2 text-amber-300/50">
+                    Total Potatoes
+                  </div>
                 </div>
               </div>
             </div>
