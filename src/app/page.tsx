@@ -835,7 +835,11 @@ function App() {
         const data = await response.json();
 
         if (!response.ok) {
-          throw new Error(data.error || "Harvest failed");
+          // Throw the full data object to preserve details, actionRequired, etc.
+          const error = new Error(data.error || "Harvest failed");
+          // Attach all API response fields to error object
+          Object.assign(error, data);
+          throw error;
         }
 
         console.log("✅ Harvest successful:", data);
