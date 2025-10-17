@@ -177,10 +177,23 @@ function App() {
           });
         });
 
+        // 🔍 CRITICAL DEBUG: Environment and account verification
+        console.log("=".repeat(50));
+        console.log("🔍 [CRITICAL] Environment Check:");
+        console.log(`  - Account Address: ${account.address}`);
+        console.log(`  - Universal Account: ${universalAccount}`);
+        console.log(`  - USDC Contract: ${USDC.address}`);
+        console.log(`  - Server Wallet: ${SERVER_WALLET_ADDRESS}`);
+        console.log(`  - USDC Decimals: ${USDC.decimals}`);
+        console.log("=".repeat(50));
+
         // 🔍 DEBUG: Check USDC balance before batch
         const totalCost = 0.01 * plotIds.length;
         console.log(
-          `🔍 [DEBUG] USDC Balance: ${universalBalance?.formatted || "N/A"}`
+          `🔍 [DEBUG] USDC Balance (formatted): ${universalBalance?.formatted || "N/A"}`
+        );
+        console.log(
+          `🔍 [DEBUG] USDC Balance (raw): ${universalBalance?.value?.toString() || "N/A"}`
         );
         console.log(`🔍 [DEBUG] Total cost: ${totalCost} USDC`);
         console.log(
@@ -188,6 +201,17 @@ function App() {
             parseFloat(universalBalance?.formatted || "0") >= totalCost
           }`
         );
+
+        // 🔍 CRITICAL: Verify we're actually using the right account
+        if (
+          universalBalance?.value === undefined ||
+          universalBalance?.value === 0n
+        ) {
+          console.error("❌ [CRITICAL] Zero or undefined balance detected!");
+          throw new Error(
+            "Insufficient USDC balance. Please fund your account first."
+          );
+        }
 
         toast.info(
           `🌱 Planting ${plotIds.length} Plot${plotIds.length > 1 ? "s" : ""}!`,
@@ -200,24 +224,68 @@ function App() {
         const { createBaseAccountSDK } = await import("@base-org/account");
         const { baseSepolia } = await import("viem/chains");
 
+        console.log("🔍 [DEBUG] Base Sepolia Chain ID:", baseSepolia.id);
+        console.log(
+          "🔍 [DEBUG] Base Sepolia Chain ID (hex):",
+          `0x${baseSepolia.id.toString(16)}`
+        );
+
         const sdk = createBaseAccountSDK({
           appName: "TapTato",
           appChainIds: [baseSepolia.id],
         });
 
         const provider = sdk.getProvider();
+        console.log("🔍 [DEBUG] Provider obtained from SDK");
+
+        // 🔍 CRITICAL: Verify current chain
+        try {
+          const currentChainId = await provider.request({
+            method: "eth_chainId",
+          });
+          console.log(
+            "🔍 [CRITICAL] Current connected chain ID:",
+            currentChainId
+          );
+          console.log(
+            "🔍 [CRITICAL] Expected chain ID:",
+            `0x${baseSepolia.id.toString(16)}`
+          );
+
+          if (currentChainId !== `0x${baseSepolia.id.toString(16)}`) {
+            console.error("❌ [CRITICAL] Chain ID mismatch!");
+            console.error(`  - Connected to: ${currentChainId}`);
+            console.error(
+              `  - Expected: 0x${baseSepolia.id.toString(16)} (Base Sepolia)`
+            );
+            throw new Error(
+              `Wrong network! Please connect to Base Sepolia. Currently on chain: ${currentChainId}`
+            );
+          }
+        } catch (chainError) {
+          console.error("❌ [CRITICAL] Chain verification failed:", chainError);
+          throw chainError;
+        }
 
         // Prepare batch calls - one transfer per plot
+        const amountInWei = parseUnits("0.01", USDC.decimals);
+        console.log(
+          "🔍 [DEBUG] Transfer amount (wei):",
+          amountInWei.toString()
+        );
+
         const calls = plotIds.map((plotId) => {
           const callData = encodeFunctionData({
             abi: erc20Abi,
             functionName: "transfer",
-            args: [SERVER_WALLET_ADDRESS, parseUnits("0.01", USDC.decimals)],
+            args: [SERVER_WALLET_ADDRESS, amountInWei],
           });
-          console.log(
-            `🔍 [DEBUG] Preparing call for plot ${plotId}:`,
-            callData.slice(0, 20) + "..."
-          );
+          console.log(`🔍 [DEBUG] Preparing call for plot ${plotId}:`, {
+            to: USDC.address,
+            value: "0x0",
+            dataPreview: callData.slice(0, 20) + "...",
+            fullDataLength: callData.length,
+          });
           return {
             to: USDC.address,
             value: "0x0",
@@ -225,12 +293,27 @@ function App() {
           };
         });
 
-        console.log("🔍 [DEBUG] Sending wallet_sendCalls with params:", {
-          version: "2.0",
-          from: account.address,
-          chainId: `0x${baseSepolia.id.toString(16)}`,
-          callsCount: calls.length,
-        });
+        console.log("=".repeat(50));
+        console.log("🔍 [CRITICAL] wallet_sendCalls params:");
+        console.log(
+          JSON.stringify(
+            {
+              version: "2.0",
+              from: account.address,
+              chainId: `0x${baseSepolia.id.toString(16)}`,
+              callsCount: calls.length,
+              firstCallTo: calls[0]?.to,
+              capabilities: {
+                atomicBatch: {
+                  supported: false,
+                },
+              },
+            },
+            null,
+            2
+          )
+        );
+        console.log("=".repeat(50));
 
         // Send batch using wallet_sendCalls (EIP-5792)
         const callsId = await provider.request({
@@ -289,13 +372,30 @@ function App() {
 
         refetchBalance();
       } catch (error: any) {
-        console.error("❌ Batch plant failed:", error);
-        console.log("🔍 [DEBUG] Error details:", {
+        console.error("=".repeat(50));
+        console.error("❌ [CRITICAL] Batch plant failed!");
+        console.error("Error object:", error);
+        console.error("Error details:", {
+          name: error.name,
           code: error.code,
           message: error.message,
           data: error.data,
+          stack: error.stack?.split("\n").slice(0, 5),
         });
-        console.log("🔍 [DEBUG] Failed plot IDs:", plotIds);
+        console.error("🔍 [DEBUG] Failed plot IDs:", plotIds);
+        console.error("🔍 [DEBUG] Account state:", {
+          address: account.address,
+          universalAccount: universalAccount,
+          balance: universalBalance?.formatted,
+          rawBalance: universalBalance?.value?.toString(),
+        });
+        console.error("🔍 [DEBUG] Transaction params:", {
+          usdcContract: USDC.address,
+          serverWallet: SERVER_WALLET_ADDRESS,
+          plotCount: plotIds.length,
+          totalCost: `${0.01 * plotIds.length} USDC`,
+        });
+        console.error("=".repeat(50));
 
         // Reset ALL failed plots to empty state
         plotIds.forEach((plotId) => {
@@ -304,8 +404,18 @@ function App() {
           harvest(plotId);
         });
 
+        // Show more specific error message
+        let errorMessage = "💔 Transaction failed. ";
+        if (error.message?.includes("gas")) {
+          errorMessage += "Check console for details.";
+        } else if (error.message?.includes("insufficient")) {
+          errorMessage += "Insufficient balance?";
+        } else {
+          errorMessage += error.message?.slice(0, 100) || "Unknown error";
+        }
+
         toast.error("❌ Planting Failed!", {
-          description: `💔 ${plotIds.length} plot${plotIds.length > 1 ? "s" : ""} reset. Try fewer at once (max 3)`,
+          description: errorMessage,
           duration: 5000,
         });
       } finally {
