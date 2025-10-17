@@ -894,9 +894,23 @@ function App() {
         }, 2000);
       } catch (error: any) {
         console.error("❌ Harvest error:", error);
+        console.error("❌ Harvest error details:", {
+          message: error.message,
+          details: error.details,
+          actionRequired: error.actionRequired,
+          originalError: error.originalError,
+          debugInfo: error.debugInfo,
+        });
+
+        const errorMessage =
+          error.details || error.message || "Something went wrong";
+        const actionHint = error.actionRequired
+          ? `\n${error.actionRequired}`
+          : "";
+
         toast.error("❌ Harvest Failed!", {
-          description: `💔 ${error.message || "Something went wrong"}`,
-          duration: 4000,
+          description: `💔 ${errorMessage}${actionHint ? "\n💡 " + actionHint : ""}`,
+          duration: 6000,
         });
       }
     },
