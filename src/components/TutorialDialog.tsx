@@ -132,7 +132,9 @@ export function TutorialDialog({ open, onClose }: TutorialDialogProps) {
                 </p>
               </div>
               <div>
-                <strong className="text-blue-400 text-lg">2. Wait (20 seconds)</strong>
+                <strong className="text-blue-400 text-lg">
+                  2. Wait (20 seconds)
+                </strong>
                 <p className="text-gray-400 ml-4 mt-1">
                   Watch your potato grow: seed → sprout → mid → ripe
                 </p>
@@ -163,7 +165,9 @@ export function TutorialDialog({ open, onClose }: TutorialDialogProps) {
                 </div>
               </div>
               <div>
-                <strong className="text-red-400 text-lg">4. Rotten? Clear it!</strong>
+                <strong className="text-red-400 text-lg">
+                  4. Rotten? Clear it!
+                </strong>
                 <p className="text-gray-400 ml-4 mt-1">
                   Hover rotten plot → "Clear" → Remove it
                 </p>

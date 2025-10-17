@@ -115,11 +115,45 @@ function App() {
     async (plotIds: number[]) => {
       if (!account.address || plotIds.length === 0) return;
 
+      // 🔍 DEBUG: Check if batch is already processing
+      console.log("🔍 [DEBUG] isProcessingBatch before:", isProcessingBatch);
+      if (isProcessingBatch) {
+        console.log("⚠️ [DEBUG] Batch already in progress, aborting");
+        return;
+      }
+
+      // 🔒 Set processing flag
+      setIsProcessingBatch(true);
+      console.log("🔒 [DEBUG] Batch locked, isProcessingBatch set to true");
+
       try {
         console.log(
           "🌱 Batching",
           plotIds.length,
           "plants with wallet_sendCalls"
+        );
+
+        // 🔍 DEBUG: Log current plot states
+        plotIds.forEach((id) => {
+          const plot = plots[id];
+          console.log(`🔍 [DEBUG] Plot ${id} state:`, {
+            state: plot.state,
+            isLoading: plot.isLoading,
+            plantTime: plot.plantTime,
+            readyAt: plot.readyAt,
+          });
+        });
+
+        // 🔍 DEBUG: Check USDC balance before batch
+        const totalCost = 0.01 * plotIds.length;
+        console.log(
+          `🔍 [DEBUG] USDC Balance: ${universalBalance?.formatted || "N/A"}`
+        );
+        console.log(`🔍 [DEBUG] Total cost: ${totalCost} USDC`);
+        console.log(
+          `🔍 [DEBUG] Balance sufficient: ${
+            parseFloat(universalBalance?.formatted || "0") >= totalCost
+          }`
         );
 
         toast.info(`Planting ${plotIds.length} plots!`, {
@@ -138,15 +172,29 @@ function App() {
         const provider = sdk.getProvider();
 
         // Prepare batch calls - one transfer per plot
-        const calls = plotIds.map(() => ({
-          to: USDC.address,
-          value: "0x0",
-          data: encodeFunctionData({
+        const calls = plotIds.map((plotId) => {
+          const callData = encodeFunctionData({
             abi: erc20Abi,
             functionName: "transfer",
             args: [SERVER_WALLET_ADDRESS, parseUnits("0.01", USDC.decimals)],
-          }),
-        }));
+          });
+          console.log(
+            `🔍 [DEBUG] Preparing call for plot ${plotId}:`,
+            callData.slice(0, 20) + "..."
+          );
+          return {
+            to: USDC.address,
+            value: "0x0",
+            data: callData,
+          };
+        });
+
+        console.log("🔍 [DEBUG] Sending wallet_sendCalls with params:", {
+          version: "2.0",
+          from: account.address,
+          chainId: `0x${baseSepolia.id.toString(16)}`,
+          callsCount: calls.length,
+        });
 
         // Send batch using wallet_sendCalls (EIP-5792)
         const callsId = await provider.request({
@@ -165,6 +213,11 @@ function App() {
             },
           ],
         });
+
+        console.log(
+          "🔍 [DEBUG] wallet_sendCalls successful, callsId:",
+          callsId
+        );
 
         console.log("✅ Batch sent:", callsId);
 
@@ -198,10 +251,17 @@ function App() {
         refetchBalance();
       } catch (error: any) {
         console.error("❌ Batch plant failed:", error);
+        console.log("🔍 [DEBUG] Error details:", {
+          code: error.code,
+          message: error.message,
+          data: error.data,
+        });
+        console.log("🔍 [DEBUG] Failed plot IDs:", plotIds);
 
         // Reset ALL failed plots to empty state
         plotIds.forEach((plotId) => {
           // Force reset to empty (clears loading, plantTime, readyAt)
+          console.log(`🔍 [DEBUG] Resetting plot ${plotId} to empty`);
           harvest(plotId);
         });
 
@@ -210,21 +270,37 @@ function App() {
           duration: 5000,
         });
       } finally {
+        console.log("🔍 [DEBUG] Finally block: Releasing batch lock");
         setIsProcessingBatch(false);
+        console.log("🔍 [DEBUG] isProcessingBatch set to false");
       }
     },
-    [account.address, plant, harvest, refetchBalance, isProcessingBatch]
+    [
+      account.address,
+      plant,
+      harvest,
+      refetchBalance,
+      isProcessingBatch,
+      plots,
+      universalBalance,
+    ]
   );
 
   // Plant single plot with debouncing and batching
   const handlePlantSingle = useCallback(
     (plotId: number) => {
+      console.log(`🔍 [DEBUG] handlePlantSingle called for plot ${plotId}`);
+
       if (!account.address) {
         toast.error("Wallet not connected");
         return;
       }
 
+      console.log("🔍 [DEBUG] isProcessingBatch:", isProcessingBatch);
       if (isProcessingBatch) {
+        console.log(
+          "⚠️ [DEBUG] Batch in progress, rejecting new plant request"
+        );
         toast.info("Batch in progress, please wait...");
         return;
       }
@@ -235,10 +311,17 @@ function App() {
       // Add to queue (using ref to avoid closure issues)
       if (!plantQueueRef.current.includes(plotId)) {
         plantQueueRef.current.push(plotId);
+        console.log(
+          `🔍 [DEBUG] Added plot ${plotId} to queue. Queue:`,
+          plantQueueRef.current
+        );
+      } else {
+        console.log(`⚠️ [DEBUG] Plot ${plotId} already in queue`);
       }
 
       // Limit to 3 plots per batch (to avoid "replacement underpriced" error)
       if (plantQueueRef.current.length >= 3) {
+        console.log("🔍 [DEBUG] Queue full (3 plots), executing immediately");
         toast.info("Max 3 plots per batch - executing now!");
         const queueToProcess = [...plantQueueRef.current];
         plantQueueRef.current = []; // Clear queue
@@ -246,6 +329,7 @@ function App() {
         // Clear timeout
         if (plantTimeoutRef.current) {
           clearTimeout(plantTimeoutRef.current);
+          console.log("🔍 [DEBUG] Cleared existing timeout");
         }
 
         executePlantBatch(queueToProcess);
@@ -255,11 +339,18 @@ function App() {
       // Clear existing timeout
       if (plantTimeoutRef.current) {
         clearTimeout(plantTimeoutRef.current);
+        console.log(
+          "🔍 [DEBUG] Cleared existing timeout, setting new 500ms timer"
+        );
       }
 
       // Set new timeout to execute batch after 500ms (longer to allow multiple clicks)
       plantTimeoutRef.current = setTimeout(() => {
         const queueToProcess = [...plantQueueRef.current];
+        console.log(
+          `🔍 [DEBUG] Timer expired, executing batch with ${queueToProcess.length} plots:`,
+          queueToProcess
+        );
         plantQueueRef.current = []; // Clear queue
         executePlantBatch(queueToProcess);
       }, 500);
