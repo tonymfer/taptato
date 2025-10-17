@@ -189,8 +189,8 @@ function App() {
           }`
         );
 
-        toast.info(`Planting ${plotIds.length} plots!`, {
-          description: "Batching transactions...",
+        toast.info(`🌱 Planting ${plotIds.length} Plot${plotIds.length > 1 ? 's' : ''}!`, {
+          description: "⚡ Batching transactions...",
         });
 
         // Import Base Account SDK
@@ -277,8 +277,8 @@ function App() {
         // Track PnL
         setTotalPnL((prev) => prev - 0.01 * plotIds.length);
 
-        toast.success(`Planted ${plotIds.length} plots!`, {
-          description: `${(plotIds.length * 0.01).toFixed(2)} USDC sent`,
+        toast.success(`✨ ${plotIds.length} Plot${plotIds.length > 1 ? 's' : ''} Planted!`, {
+          description: `💰 Spent ${(plotIds.length * 0.01).toFixed(2)} USDC • Seeds growing...`,
         });
 
         refetchBalance();
@@ -298,8 +298,8 @@ function App() {
           harvest(plotId);
         });
 
-        toast.error("Batch plant failed", {
-          description: `${plotIds.length} plots reset. Try fewer at once (max 3).`,
+        toast.error("❌ Planting Failed!", {
+          description: `💔 ${plotIds.length} plot${plotIds.length > 1 ? 's' : ''} reset. Try fewer at once (max 3)`,
           duration: 5000,
         });
       } finally {
@@ -318,7 +318,9 @@ function App() {
       console.log(`🔍 [DEBUG] handlePlantSingle called for plot ${plotId}`);
 
       if (!account.address) {
-        toast.error("Wallet not connected");
+        toast.error("🔌 Wallet Not Connected", {
+          description: "Please connect your wallet first!",
+        });
         return;
       }
 
@@ -342,7 +344,9 @@ function App() {
       // Limit to 3 plots per batch (to avoid "replacement underpriced" error)
       if (plantQueueRef.current.length >= 3) {
         console.log("🔍 [DEBUG] Queue full (3 plots), executing immediately");
-        toast.info("Max 3 plots per batch - executing now!");
+        toast.info("⚡ Batch Ready!", {
+          description: "🌱 Max 3 plots per batch - planting now!",
+        });
         const queueToProcess = [...plantQueueRef.current];
         plantQueueRef.current = []; // Clear queue
 
@@ -382,13 +386,17 @@ function App() {
   const handleHarvestSingle = useCallback(
     async (plotId: number) => {
       if (!account.address) {
-        toast.error("Wallet not connected");
+        toast.error("🔌 Wallet Not Connected", {
+          description: "Please connect your wallet first!",
+        });
         return;
       }
 
       const plot = plots[plotId];
       if (!plot.readyAt || !plot.plantTime) {
-        toast.error("Plot not planted");
+        toast.error("❌ Empty Plot!", {
+          description: "This plot hasn't been planted yet",
+        });
         return;
       }
 
@@ -439,25 +447,37 @@ function App() {
           });
         }, 2000);
 
-        // Show result toast
+        // Show result toast with tier-specific styling
         const messages = {
-          Perfect: "🥔 Perfect! +100% bonus",
-          Good: "👍 Good! +50% bonus",
-          Late: "😞 Too late... 0% bonus",
+          Perfect: {
+            title: "🏆 PERFECT HARVEST!",
+            description: `💎 +${data.totalPayout.toFixed(2)} USDC • +100% BONUS!`,
+          },
+          Good: {
+            title: "✨ Good Harvest!",
+            description: `💰 +${data.totalPayout.toFixed(2)} USDC • +50% bonus`,
+          },
+          Late: {
+            title: "😅 Late Harvest",
+            description: `💸 +${data.totalPayout.toFixed(2)} USDC • No bonus`,
+          },
         };
 
-        toast.success(
-          messages[data.tier as keyof typeof messages] || "Harvested!",
-          {
-            description: `+${data.totalPayout.toFixed(2)} USDC`,
-          }
-        );
+        const message =
+          messages[data.tier as keyof typeof messages] ||
+          messages.Good;
+
+        toast.success(message.title, {
+          description: message.description,
+          duration: data.tier === "Perfect" ? 5000 : 3000,
+        });
 
         refetchBalance();
       } catch (error: any) {
         console.error("❌ Harvest error:", error);
-        toast.error("Harvest failed", {
-          description: error.message,
+        toast.error("❌ Harvest Failed!", {
+          description: `💔 ${error.message || "Something went wrong"}`,
+          duration: 4000,
         });
       }
     },
@@ -471,7 +491,9 @@ function App() {
     );
     if (emptyPlots.length === 0) return;
 
-    toast.info(`Planting ${emptyPlots.length} plots...`);
+    toast.info(`🌱 Batch Planting ${emptyPlots.length} Plots...`, {
+      description: "⏳ Preparing seeds...",
+    });
     emptyPlots.forEach(handlePlantSingle);
     setSelectedPlots([]);
   }, [selectedPlots, plots, handlePlantSingle]);
@@ -482,7 +504,9 @@ function App() {
     const ripePlots = selectedPlots.filter((id) => visualStates[id] === "ripe");
     if (ripePlots.length === 0) return;
 
-    toast.info(`Harvesting ${ripePlots.length} plots...`);
+    toast.info(`🥔 Batch Harvesting ${ripePlots.length} Plots...`, {
+      description: "⏳ Collecting potatoes...",
+    });
     ripePlots.forEach(handleHarvestSingle);
     setSelectedPlots([]);
   }, [selectedPlots, plots, currentTime, handleHarvestSingle]);
@@ -490,31 +514,39 @@ function App() {
   // Fund account
   const handleFundAccount = useCallback(async () => {
     if (!universalAccount) {
-      toast.error("No universal account found");
-      return;
-    }
-
-    if (!faucetEligibility.isEligible) {
-      toast.error("Not eligible for faucet", {
-        description: faucetEligibility.reason,
+      toast.error("❌ Account Error", {
+        description: "No universal account found",
       });
       return;
     }
 
-    const fundingToastId = toast.loading("Requesting USDC from faucet...");
+    if (!faucetEligibility.isEligible) {
+      toast.error("⛔ Faucet Not Available", {
+        description: faucetEligibility.reason,
+        duration: 4000,
+      });
+      return;
+    }
+
+    const fundingToastId = toast.loading("💰 Requesting USDC...", {
+      description: "⏳ Connecting to faucet...",
+    });
 
     faucetMutation.mutate(
       { address: universalAccount },
       {
         onSuccess: () => {
           toast.dismiss(fundingToastId);
-          toast.success("Account funded!");
+          toast.success("✨ Account Funded!", {
+            description: "💰 USDC received! Start planting!",
+            duration: 4000,
+          });
         },
         onError: (error) => {
           toast.dismiss(fundingToastId);
-          toast.error("Failed to fund account", {
-            description:
-              error instanceof Error ? error.message : "Try again later",
+          toast.error("❌ Funding Failed", {
+            description: `💔 ${error instanceof Error ? error.message : "Try again later"}`,
+            duration: 5000,
           });
         },
       }

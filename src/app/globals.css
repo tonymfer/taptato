@@ -206,4 +206,139 @@ body {
   .animate-glint {
     animation: glint 0.6s linear infinite;
   }
+
+  /* Pixel-perfect toast animations */
+  @keyframes pixel-slide-in {
+    0% {
+      transform: translateX(100%) scale(0.8);
+      opacity: 0;
+    }
+    100% {
+      transform: translateX(0) scale(1);
+      opacity: 1;
+    }
+  }
+
+  @keyframes pixel-pulse {
+    0%, 100% {
+      box-shadow: 0 0 0 0px rgba(34, 197, 94, 0.7);
+    }
+    50% {
+      box-shadow: 0 0 0 8px rgba(34, 197, 94, 0);
+    }
+  }
+
+  /* Sonner Toast Custom Styles - Pixel Game Theme */
+  [data-sonner-toast] {
+    font-family: var(--font-vt323), monospace !important;
+    font-size: 18px !important;
+    border: 3px solid !important;
+    border-radius: 0px !important;
+    box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.8) !important;
+    padding: 16px 20px !important;
+    background: #1a1a1a !important;
+    animation: pixel-slide-in 0.3s cubic-bezier(0.22, 1, 0.36, 1) !important;
+  }
+
+  /* Success Toast - Green Pixel Theme */
+  [data-sonner-toast][data-type="success"] {
+    border-color: #22c55e !important;
+    background: linear-gradient(135deg, #1a3a1f 0%, #0d1f12 100%) !important;
+    color: #4ade80 !important;
+  }
+
+  [data-sonner-toast][data-type="success"] [data-icon] {
+    color: #22c55e !important;
+  }
+
+  [data-sonner-toast][data-type="success"] [data-title] {
+    color: #86efac !important;
+    font-weight: 400 !important;
+    text-shadow: 0 0 8px rgba(34, 197, 94, 0.5) !important;
+  }
+
+  [data-sonner-toast][data-type="success"] [data-description] {
+    color: #4ade80 !important;
+    margin-top: 4px !important;
+  }
+
+  /* Error Toast - Red Pixel Theme */
+  [data-sonner-toast][data-type="error"] {
+    border-color: #ef4444 !important;
+    background: linear-gradient(135deg, #3a1a1a 0%, #1f0d0d 100%) !important;
+    color: #fca5a5 !important;
+  }
+
+  [data-sonner-toast][data-type="error"] [data-icon] {
+    color: #ef4444 !important;
+  }
+
+  [data-sonner-toast][data-type="error"] [data-title] {
+    color: #fca5a5 !important;
+    font-weight: 400 !important;
+    text-shadow: 0 0 8px rgba(239, 68, 68, 0.5) !important;
+  }
+
+  [data-sonner-toast][data-type="error"] [data-description] {
+    color: #f87171 !important;
+    margin-top: 4px !important;
+  }
+
+  /* Info Toast - Blue Pixel Theme */
+  [data-sonner-toast][data-type="info"] {
+    border-color: #3b82f6 !important;
+    background: linear-gradient(135deg, #1a2a3a 0%, #0d1520 100%) !important;
+    color: #93c5fd !important;
+  }
+
+  [data-sonner-toast][data-type="info"] [data-icon] {
+    color: #3b82f6 !important;
+  }
+
+  [data-sonner-toast][data-type="info"] [data-title] {
+    color: #bfdbfe !important;
+    font-weight: 400 !important;
+    text-shadow: 0 0 8px rgba(59, 130, 246, 0.5) !important;
+  }
+
+  [data-sonner-toast][data-type="info"] [data-description] {
+    color: #93c5fd !important;
+    margin-top: 4px !important;
+  }
+
+  /* Loading Toast - Yellow Pixel Theme */
+  [data-sonner-toast][data-type="loading"] {
+    border-color: #f59e0b !important;
+    background: linear-gradient(135deg, #3a2a1a 0%, #1f1510 100%) !important;
+    color: #fcd34d !important;
+  }
+
+  [data-sonner-toast][data-type="loading"] [data-icon] {
+    color: #f59e0b !important;
+  }
+
+  [data-sonner-toast][data-type="loading"] [data-title] {
+    color: #fde68a !important;
+    font-weight: 400 !important;
+  }
+
+  /* Close button */
+  [data-sonner-toast] [data-close-button] {
+    border: 2px solid currentColor !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    color: inherit !important;
+    opacity: 0.7 !important;
+    transition: opacity 0.1s !important;
+  }
+
+  [data-sonner-toast] [data-close-button]:hover {
+    opacity: 1 !important;
+    background: rgba(255, 255, 255, 0.1) !important;
+  }
+
+  /* Toast container positioning */
+  [data-sonner-toaster] {
+    font-family: var(--font-vt323), monospace !important;
+  }
 }
