@@ -1,5 +1,6 @@
 export const USDC = {
-  address: "0x036cbd53842c5426634e7929541ec2318f3dcf7e" as `0x${string}`,
+  address: (process.env.NEXT_PUBLIC_TOKEN_ADDRESS ||
+    "0x036cbd53842c5426634e7929541ec2318f3dcf7e") as `0x${string}`,
   symbol: "USDC",
   decimals: 6,
 } as const;
@@ -21,5 +22,25 @@ export const erc20Abi = [
       { name: "amount", type: "uint256" },
     ],
     outputs: [{ name: "", type: "bool" }],
+  },
+  {
+    type: "function",
+    name: "approve",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "spender", type: "address" },
+      { name: "amount", type: "uint256" },
+    ],
+    outputs: [{ name: "", type: "bool" }],
+  },
+  {
+    type: "function",
+    name: "allowance",
+    stateMutability: "view",
+    inputs: [
+      { name: "owner", type: "address" },
+      { name: "spender", type: "address" },
+    ],
+    outputs: [{ name: "", type: "uint256" }],
   },
 ] as const;

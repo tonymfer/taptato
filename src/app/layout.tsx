@@ -1,19 +1,29 @@
-import "./globals.css";
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Press_Start_2P, VT323 } from "next/font/google";
 import { headers } from "next/headers";
 import { type ReactNode } from "react";
-import { cookieToInitialState } from "wagmi";
 import { Toaster } from "sonner";
+import { cookieToInitialState } from "wagmi";
+import "./globals.css";
 
 import { getConfig } from "../wagmi";
 import { Providers } from "./providers";
 
-const inter = Inter({ subsets: ["latin"] });
+const pressStart2P = Press_Start_2P({
+  weight: "400",
+  subsets: ["latin"],
+  variable: "--font-press-start",
+});
+
+const vt323 = VT323({
+  weight: "400",
+  subsets: ["latin"],
+  variable: "--font-vt323",
+});
 
 export const metadata: Metadata = {
-  title: "Sub Accounts Demo",
-  description: "A demo of sub accounts in a tipping app",
+  title: "TapTato - Zero-Popup Potato Farming",
+  description: "Farm potatoes with Base Account Sub Accounts - no popups!",
 };
 
 export default function RootLayout(props: { children: ReactNode }) {
@@ -23,7 +33,7 @@ export default function RootLayout(props: { children: ReactNode }) {
   );
   return (
     <html lang="en">
-      <body className={inter.className}>
+      <body className={`${vt323.variable} ${pressStart2P.variable}`}>
         <Providers initialState={initialState}>{props.children}</Providers>
         <Toaster />
       </body>

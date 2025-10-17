@@ -1,123 +1,129 @@
-# Sub Accounts Demo
+# TapTato 🥔🍟
 
-A Next.js demo application showcasing how to integrate [Base Account Sub Accounts](https://docs.base.org/base-account/improve-ux/sub-accounts) with wagmi and the Base Account SDK.
+**Zero-Popup Farming on Base**
 
-## What are Sub Accounts?
+A Next.js demo application showcasing [Base Account Sub Accounts](https://docs.base.org/base-account/improve-ux/sub-accounts) through a fun pixel-art potato farming game with tiered USDC rewards.
 
-Sub Accounts allow you to provision app-specific wallet accounts for your users that are embedded directly in your application. Once created, you can interact with them just as you would with any other wallet via wagmi, viem, or OnchainKit.
+> ⚠️ **Testnet Demo / NFA** - This is a demonstration project deployed on Base Sepolia testnet for educational purposes only.
 
-### Key Benefits
+## What is TapTato?
 
-- **Frictionless transactions**: Eliminate repeated signing prompts for high-frequency and agentic use cases
-- **No funding flows required**: Spend Permissions allow Sub Accounts to spend directly from the universal Base Account's balance
-- **User control**: Users can manage all their sub accounts at [account.base.app](https://account.base.app)
+TapTato is a potato farming game that demonstrates the dramatic UX difference between traditional wallet interactions (Sub Account OFF) and Base Sub Accounts (Sub Account ON):
 
-## How This Demo Works
+- **Sub OFF Mode**: Every plant/harvest action requires a wallet signature popup
+- **Sub ON Mode**: One-time permission, then seamless batched transactions with no popups
 
-This project demonstrates Sub Accounts integration using wagmi's `baseAccount` connector, which provides a simpler alternative to directly using the Base Account SDK.
+### Game Mechanics
 
-### Key Configuration
+1. **Plant** potatoes (costs 0.01 USDC per plot)
+2. Wait **45 seconds** for them to grow through 5 stages
+3. **Harvest** within a **20-second window** for bonus rewards
+4. Miss the window = rotten potato, no refund!
 
-#### 1. Sub Account Configuration (`src/wagmi.ts`)
+### Tiered Bonus System
 
-The core Sub Account setup happens in the wagmi config:
+- **Perfect** (±2s from ready): +100% bonus (2× payout)
+- **Good** (±5s from ready): +50% bonus (1.5× payout)  
+- **Late** (beyond harvest window): 0% bonus, no refund
 
-```typescript
-import { baseAccount } from "wagmi/connectors";
+All bonuses are paid from a smart contract treasury that can be funded by anyone.
 
-export function getConfig() {
-  return createConfig({
-    chains: [baseSepolia],
-    connectors: [
-      baseAccount({
-        appName: "Sub Accounts Demo",
-        subAccounts: {
-          creation: "on-connect",      // Automatically creates sub account when user connects
-          defaultAccount: "sub",        // Uses sub account as default for transactions
-        },
-        paymasterUrls: {
-          [baseSepolia.id]: process.env.NEXT_PUBLIC_PAYMASTER_SERVICE_URL,
-        },
-      }),
-    ],
-    // ... rest of config
-  });
-}
-```
+## Key Features
 
-**Configuration explained:**
-- `creation: "on-connect"` - Automatically creates a Sub Account for the user when they connect their Base Account
-- `defaultAccount: "sub"` - Transactions will automatically be sent from the Sub Account unless you specify the `from` parameter to be the universal account address
-- `paymasterUrls` - Optional paymaster configuration to sponsor gas fees for the best user experience
+### Sub Accounts Integration
 
-With this configuration:
-1. User connects their wallet → Sub Account is automatically created
-2. All transactions default to using the Sub Account
-3. Spend Permissions are automatically requested as needed
-4. Gas can be sponsored via paymaster (if configured)
+- **Mode Toggle**: Switch between Sub OFF and Sub ON to compare
+- **Batch Operations**: Multi-select plots for simultaneous planting/harvesting
+- **Auto Spend Permissions**: Sub accounts automatically request spend permissions when needed
+- **Real-time Metrics**: Track popups, transaction times, and success rates
 
-#### 2. Base Account SDK Override (`package.json`)
+### Smart Contract
 
-This project uses pnpm overrides to ensure the latest Base Account SDK is used:
-
-```json
-{
-  "pnpm": {
-    "overrides": {
-      "@base-org/account": "latest"
-    }
-  }
-}
-```
-
-This override ensures that:
-- The wagmi `baseAccount` connector uses the latest Base Account SDK features
-- All dependencies (including wagmi itself) use the same version of `@base-org/account`
-- You get the latest Sub Account functionality and bug fixes
-
-<Note>
-The `baseAccount` connector from wagmi internally uses the `@base-org/account` SDK. The override ensures version consistency across your dependency tree.
-</Note>
-
-## Auto Spend Permissions
-
-This demo leverages **Auto Spend Permissions**, which is enabled by default when using Sub Accounts. This feature allows Sub Accounts to access funds from their parent Base Account when transaction balances are insufficient.
-
-### How it works
-
-**First-time transaction:**
-When a Sub Account attempts its first transaction, Base Account:
-- Automatically detects any missing tokens needed for the transaction
-- Requests a transfer of required funds from the parent Base Account
-- Allows the user to optionally grant ongoing spend permissions for future transactions
-
-**Subsequent transactions:**
-If spend permissions were granted, future transactions use existing Sub Account balances and granted permissions first, only prompting for additional authorization if needed.
+- Solidity 0.8.20+ with OpenZeppelin
+- Tiered bonus calculation (Perfect/Good/Late)
+- Treasury system for bonus payouts
+- Safety caps (per-tx, per-address-daily, global)
+- Same-block plant+harvest prevention
 
 ## Getting Started
 
 ### Prerequisites
 
-- Node.js 18+ and pnpm installed
-- A Coinbase Developer Platform account (for optional paymaster setup)
+- Node.js 18+
+- pnpm
+- A Base Account wallet ([account.base.app](https://account.base.app))
+- Base Sepolia testnet USDC
 
 ### Installation
 
 ```bash
-# Install dependencies
+# Clone the repository
+git clone <your-repo-url>
+cd taptato
+
+# Install frontend dependencies
 pnpm install
+
+# Install contract dependencies
+cd contracts
+npm install
+cd ..
 ```
 
-### Environment Variables
+### Environment Setup
 
-Create a `.env.local` file:
+#### Frontend `.env.local`
 
 ```bash
-# Optional: Paymaster URL for gas sponsorship
-NEXT_PUBLIC_PAYMASTER_SERVICE_URL=https://api.developer.coinbase.com/rpc/v1/base-sepolia/...
+# Copy example
+cp .env.local.example .env.local
+
+# Required values:
+NEXT_PUBLIC_RPC_URL=https://sepolia.base.org
+NEXT_PUBLIC_PATCH_ADDRESS=<deployed-contract-address>
+NEXT_PUBLIC_TOKEN_ADDRESS=<base-sepolia-usdc-address>
+
+# Optional: Paymaster for gas sponsorship
+NEXT_PUBLIC_PAYMASTER_SERVICE_URL=<your-paymaster-url>
 ```
 
-See [FAUCET_SETUP.md](./FAUCET_SETUP.md) for more details on setting up the paymaster.
+#### Contracts `.env`
+
+```bash
+cd contracts
+cp .env.example .env
+
+# Configure deployment parameters
+RPC_URL=https://sepolia.base.org
+PRIVATE_KEY=<your-private-key>
+PP_TOKEN_ADDRESS=<base-sepolia-usdc-address>
+# ... (see contracts/.env.example for all parameters)
+```
+
+### Deploy Smart Contract
+
+```bash
+cd contracts
+
+# Compile
+npm run compile
+
+# Deploy to Base Sepolia
+npm run deploy
+
+# Copy the deployed address to frontend .env.local
+```
+
+### Fund Treasury (Optional)
+
+The contract needs USDC in its treasury to pay out bonuses. You can deposit using the `depositTreasury` function:
+
+```javascript
+// Using ethers.js
+await contract.depositTreasury(parseUnits("10", 6)); // 10 USDC
+```
+
+Or call it directly via a block explorer.
 
 ### Run the Demo
 
@@ -126,138 +132,143 @@ See [FAUCET_SETUP.md](./FAUCET_SETUP.md) for more details on setting up the paym
 pnpm dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) to see the demo.
-
-## Using Sub Accounts with wagmi
-
-Once configured, you can use Sub Accounts with standard wagmi hooks:
-
-### Get the Sub Account Address
-
-```typescript
-import { useAccount } from 'wagmi';
-
-function MyComponent() {
-  const { address } = useAccount();
-  // `address` will be the sub account address (since defaultAccount: "sub")
-  
-  return <div>Sub Account: {address}</div>;
-}
-```
-
-### Send Transactions
-
-Transactions automatically use the Sub Account:
-
-```typescript
-import { useSendTransaction } from 'wagmi';
-
-function SendButton() {
-  const { sendTransaction } = useSendTransaction();
-  
-  const handleSend = () => {
-    sendTransaction({
-      to: '0x...',
-      value: parseEther('0.01'),
-      // Automatically sent from sub account
-    });
-  };
-  
-  return <button onClick={handleSend}>Send Transaction</button>;
-}
-```
-
-### Access the Universal Account
-
-If you need to access the universal (parent) account:
-
-```typescript
-import { useAccount, useConnections } from 'wagmi';
-
-function MyComponent() {
-  const { address: subAddress } = useAccount();
-  const connections = useConnections();
-  
-  // The connector exposes additional account info
-  const connector = connections[0]?.connector;
-  const universalAddress = connector?.accounts?.[0]; // Parent account
-  
-  return (
-    <div>
-      <div>Universal Account: {universalAddress}</div>
-      <div>Sub Account: {subAddress}</div>
-    </div>
-  );
-}
-```
+Open [http://localhost:3000](http://localhost:3000) to play!
 
 ## Project Structure
 
 ```
-src/
-├── app/
-│   ├── api/
-│   │   ├── faucet/         # Backend faucet endpoint
-│   │   └── posts/          # Example API route
-│   ├── layout.tsx          # Root layout with providers
-│   └── page.tsx            # Main demo page
-├── components/
-│   ├── posts.tsx           # Example component showing transactions
-│   └── ui/                 # UI components (buttons, dialogs, etc.)
-├── hooks/
-│   ├── useFaucet.ts        # Hook for requesting test tokens
-│   └── useFaucetEligibility.ts
-├── lib/
-│   ├── faucet.ts           # Faucet utilities
-│   ├── usdc.ts             # USDC contract utilities
-│   └── utils.ts            # General utilities
-└── wagmi.ts                # ⭐ Wagmi configuration with Sub Accounts
+taptato/
+├── contracts/                  # Smart contracts
+│   ├── contracts/
+│   │   └── PotatoPatch.sol    # Main game contract
+│   ├── scripts/deploy.ts      # Deployment script
+│   └── hardhat.config.ts      # Hardhat configuration
+├── src/
+│   ├── app/
+│   │   ├── page.tsx           # Main farming UI
+│   │   ├── providers.tsx      # Mode context & wagmi
+│   │   └── globals.css        # Pixel fonts & styles
+│   ├── components/
+│   │   ├── ModeToggle.tsx     # Sub OFF/ON switcher
+│   │   ├── PlotGrid.tsx       # 3×3 plot grid
+│   │   ├── PlotTile.tsx       # Single plot component
+│   │   └── Hud.tsx            # Metrics display
+│   ├── hooks/
+│   │   ├── useBlockTime.ts    # Onchain time polling
+│   │   ├── usePlotState.ts    # Contract state management
+│   │   └── useCallBatcher.ts  # Transaction batching
+│   ├── lib/
+│   │   ├── abi/potatoAbi.ts   # Contract ABI
+│   │   └── contracts.ts       # Contract addresses
+│   └── wagmi/
+│       ├── offConfig.ts       # Sub OFF config
+│       └── onConfig.ts        # Sub ON config
+└── public/
+    ├── seed.png               # Potato growth stages
+    ├── sprout.png
+    ├── mid.png
+    ├── full.png               # Ripe potato
+    └── wilt.png               # Rotten potato
 ```
 
 ## Technical Details
 
 ### How Sub Accounts Work
 
-Base Account's self-custodial design requires a user passkey prompt for each wallet interaction. Sub Accounts provide a solution for applications requiring frequent wallet interactions by:
+Base Account Sub Accounts enable frictionless transactions by:
 
 1. Creating a hierarchical relationship between the universal Base Account and app-specific Sub Accounts
 2. Using browser CryptoKey APIs to generate non-extractable signing keys
-3. Linking Sub Accounts onchain through [ERC-7895](https://eip.tools/eip/7895) wallet RPC methods
-4. Combining with [Spend Permissions](https://docs.base.org/base-account/improve-ux/spend-permissions) to enable seamless funding
+3. Linking Sub Accounts onchain through [ERC-7895](https://eip.tools/eip/7895)
+4. Combining with [Spend Permissions](https://docs.base.org/base-account/improve-ux/spend-permissions) for seamless funding
 
-### wagmi vs Direct SDK Usage
+### Wagmi Configuration
 
-This demo uses wagmi's `baseAccount` connector, which provides:
-- ✅ Simpler configuration
-- ✅ Standard wagmi hooks (useAccount, useSendTransaction, etc.)
-- ✅ Automatic Sub Account management
-- ✅ Better TypeScript integration
+This demo uses wagmi's `baseAccount` connector with two configurations:
 
-For more control, you can use the Base Account SDK directly. See the [Complete Integration Example](https://docs.base.org/base-account/improve-ux/sub-accounts#complete-integration-example) in the docs.
+**Sub OFF** (`offConfig.ts`):
+```typescript
+subAccounts: {
+  creation: "never",  // No sub accounts
+}
+```
 
-## Additional Resources
+**Sub ON** (`onConfig.ts`):
+```typescript
+subAccounts: {
+  creation: "on-connect",    // Auto-create sub account
+  defaultAccount: "sub",      // Use sub account by default
+}
+```
 
-- **Official Documentation**: [Base Account Sub Accounts](https://docs.base.org/base-account/improve-ux/sub-accounts)
-- **Live Demo**: [sub-accounts-fc.vercel.app](https://sub-accounts-fc.vercel.app)
+### Transaction Batching
+
+In Sub ON mode, the `useCallBatcher` hook queues transactions for 300ms, then sends them all at once using `wallet_sendCalls` (EIP-5792) for a seamless experience.
+
+## Safety Features
+
+The smart contract includes multiple safety mechanisms:
+
+- **Anti-exploit**: Same-block plant+harvest rejection
+- **Bonus caps**: Per-transaction, per-address-daily, and global limits
+- **Treasury check**: Bonuses only paid if treasury has sufficient balance
+- **Reentrancy guard**: Prevents reentrancy attacks
+- **Ownership**: Admin functions for config updates and emergency withdrawal
+
+## Pixel Art & Fonts
+
+TapTato uses a retro pixel aesthetic:
+
+- **Titles**: Press Start 2P (24px/16px)
+- **Body**: VT323 (16px)
+- **Metrics**: Pixelify Sans (12-14px, bold)
+- **Images**: Rendered pixelated (nearest-neighbor) at 2× scale
+
+## Managing Permissions
+
+Users can manage all their sub account permissions at:
+
+🔗 [account.base.app](https://account.base.app)
+
+Here you can:
+- View all sub accounts
+- Revoke spend permissions
+- Delete sub accounts
+- Manage app access
+
+## Resources
+
+- **Base Account Docs**: [docs.base.org/base-account](https://docs.base.org/base-account)
+- **Sub Accounts Guide**: [Base Account Sub Accounts](https://docs.base.org/base-account/improve-ux/sub-accounts)
+- **Spend Permissions**: [docs.base.org/base-account/improve-ux/spend-permissions](https://docs.base.org/base-account/improve-ux/spend-permissions)
 - **wagmi Docs**: [wagmi.sh](https://wagmi.sh)
-- **Base Account Dashboard**: [account.base.app](https://account.base.app)
-- **Spend Permissions Guide**: [Base Account Spend Permissions](https://docs.base.org/base-account/improve-ux/spend-permissions)
-- **Paymaster Guide**: [Coinbase Paymaster](https://docs.cdp.coinbase.com/paymaster/introduction/welcome)
+- **Base Sepolia Explorer**: [sepolia.basescan.org](https://sepolia.basescan.org)
 
-## Best Practices
+## Troubleshooting
 
-1. **Use Paymasters**: Sponsor gas fees to provide the smoothest user experience
-2. **Handle Ownership Updates**: Sub Accounts may need ownership updates when users switch devices - the SDK handles this automatically
-3. **Customize App Metadata**: Set meaningful `appName` values to help users identify your app in their Base Account dashboard
-4. **Test Thoroughly**: Use Base Sepolia testnet before deploying to production
+### "Insufficient allowance" error
 
-## Support
+Approve the contract to spend USDC:
+```javascript
+await usdcContract.approve(POTATO_PATCH_ADDRESS, parseUnits("100", 6));
+```
 
-For questions or issues:
-- Check the [Base Account documentation](https://docs.base.org/base-account)
-- Join the [Base Discord](https://discord.gg/buildonbase)
-- Open an issue in this repository
+### "Treasury insufficient" warning
+
+The contract treasury needs funding. Call `depositTreasury(amount)` or contact the contract owner.
+
+### Transactions not batching
+
+Make sure you're in Sub ON mode and selecting multiple plots. Batching only works with 2+ transactions.
+
+### Wrong network
+
+Verify you're connected to Base Sepolia (Chain ID: 84532).
 
 ## License
 
 MIT
+
+---
+
+Built with ❤️ using Base Account Sub Accounts
