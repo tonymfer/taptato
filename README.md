@@ -5,7 +5,7 @@
 
 > A Next.js farming game demonstrating the power of [Base Account Sub Accounts](https://docs.base.org/base-account/improve-ux/sub-accounts) and Auto Spend Permissions through addictive gameplay with real USDC rewards.
 
-**🎮 [Play Demo](https://your-demo-url.vercel.app)** | **📺 [Watch Demo Video](#)** | **🏆 Built for Base Builder Quest #11**
+**🎮 [Play Demo](https://tabptato.vercel.app)** | **📺 [Watch Demo Video](https://x.com/tonymfer/status/1979189014386348271)** | **🏆 Built for Base Builder Quest #11**
 
 ---
 
