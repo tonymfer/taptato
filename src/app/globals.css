@@ -220,7 +220,8 @@ body {
   }
 
   @keyframes pixel-pulse {
-    0%, 100% {
+    0%,
+    100% {
       box-shadow: 0 0 0 0px rgba(34, 197, 94, 0.7);
     }
     50% {

@@ -189,9 +189,12 @@ function App() {
           }`
         );
 
-        toast.info(`🌱 Planting ${plotIds.length} Plot${plotIds.length > 1 ? 's' : ''}!`, {
-          description: "⚡ Batching transactions...",
-        });
+        toast.info(
+          `🌱 Planting ${plotIds.length} Plot${plotIds.length > 1 ? "s" : ""}!`,
+          {
+            description: "⚡ Batching transactions...",
+          }
+        );
 
         // Import Base Account SDK
         const { createBaseAccountSDK } = await import("@base-org/account");
@@ -277,9 +280,12 @@ function App() {
         // Track PnL
         setTotalPnL((prev) => prev - 0.01 * plotIds.length);
 
-        toast.success(`✨ ${plotIds.length} Plot${plotIds.length > 1 ? 's' : ''} Planted!`, {
-          description: `💰 Spent ${(plotIds.length * 0.01).toFixed(2)} USDC • Seeds growing...`,
-        });
+        toast.success(
+          `✨ ${plotIds.length} Plot${plotIds.length > 1 ? "s" : ""} Planted!`,
+          {
+            description: `💰 Spent ${(plotIds.length * 0.01).toFixed(2)} USDC • Seeds growing...`,
+          }
+        );
 
         refetchBalance();
       } catch (error: any) {
@@ -299,7 +305,7 @@ function App() {
         });
 
         toast.error("❌ Planting Failed!", {
-          description: `💔 ${plotIds.length} plot${plotIds.length > 1 ? 's' : ''} reset. Try fewer at once (max 3)`,
+          description: `💔 ${plotIds.length} plot${plotIds.length > 1 ? "s" : ""} reset. Try fewer at once (max 3)`,
           duration: 5000,
         });
       } finally {
@@ -464,8 +470,7 @@ function App() {
         };
 
         const message =
-          messages[data.tier as keyof typeof messages] ||
-          messages.Good;
+          messages[data.tier as keyof typeof messages] || messages.Good;
 
         toast.success(message.title, {
           description: message.description,
