@@ -87,6 +87,7 @@ function App() {
   // Use refs for batch queue to avoid closure issues
   const plantQueueRef = useRef<number[]>([]);
   const plantTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isProcessingBatchRef = useRef(false); // Use ref for real-time flag
 
   // Show tutorial on first visit
   useEffect(() => {
@@ -115,16 +116,48 @@ function App() {
     async (plotIds: number[]) => {
       if (!account.address || plotIds.length === 0) return;
 
-      // 🔍 DEBUG: Check if batch is already processing
-      console.log("🔍 [DEBUG] isProcessingBatch before:", isProcessingBatch);
-      if (isProcessingBatch) {
-        console.log("⚠️ [DEBUG] Batch already in progress, aborting");
+      // 🔍 DEBUG: Check if batch is already processing using ref
+      console.log(
+        "🔍 [DEBUG] isProcessingBatchRef.current:",
+        isProcessingBatchRef.current
+      );
+      if (isProcessingBatchRef.current) {
+        console.log(
+          "⚠️ [DEBUG] Batch already in progress, requeuing plots for next batch"
+        );
+
+        // Re-add these plots back to the queue for the next batch
+        plotIds.forEach((id) => {
+          if (!plantQueueRef.current.includes(id)) {
+            plantQueueRef.current.push(id);
+          }
+        });
+        console.log(
+          "🔍 [DEBUG] Plots requeued:",
+          plotIds,
+          "New queue:",
+          plantQueueRef.current
+        );
+
+        // Set a timer to process the queue again after current batch completes
+        if (!plantTimeoutRef.current) {
+          plantTimeoutRef.current = setTimeout(() => {
+            const queueToProcess = [...plantQueueRef.current];
+            plantQueueRef.current = []; // Clear queue before processing
+            console.log(
+              "🔍 [DEBUG] Retry timer: processing queue:",
+              queueToProcess
+            );
+            executePlantBatch(queueToProcess);
+          }, 1000); // Wait 1 second before retrying
+        }
         return;
       }
 
-      // 🔒 Set processing flag
-      setIsProcessingBatch(true);
-      console.log("🔒 [DEBUG] Batch locked, isProcessingBatch set to true");
+      // 🔒 Set processing flag using ref (real-time, no closure issues)
+      isProcessingBatchRef.current = true;
+      setIsProcessingBatch(true); // Also update state for UI
+      console.log("🔒 [DEBUG] Batch locked, isProcessingBatchRef set to true");
 
       try {
         console.log(
@@ -271,19 +304,12 @@ function App() {
         });
       } finally {
         console.log("🔍 [DEBUG] Finally block: Releasing batch lock");
+        isProcessingBatchRef.current = false; // Release ref flag
         setIsProcessingBatch(false);
-        console.log("🔍 [DEBUG] isProcessingBatch set to false");
+        console.log("🔍 [DEBUG] isProcessingBatchRef and state set to false");
       }
     },
-    [
-      account.address,
-      plant,
-      harvest,
-      refetchBalance,
-      isProcessingBatch,
-      plots,
-      universalBalance,
-    ]
+    [account.address, plant, harvest, refetchBalance, plots, universalBalance]
   );
 
   // Plant single plot with debouncing and batching
@@ -296,14 +322,8 @@ function App() {
         return;
       }
 
-      console.log("🔍 [DEBUG] isProcessingBatch:", isProcessingBatch);
-      if (isProcessingBatch) {
-        console.log(
-          "⚠️ [DEBUG] Batch in progress, rejecting new plant request"
-        );
-        toast.info("Batch in progress, please wait...");
-        return;
-      }
+      // ✅ Allow continuous clicking - don't block based on processing state
+      // The executePlantBatch will handle concurrent execution prevention
 
       // Immediate visual feedback: Show seed (loading)
       startPlanting(plotId);
@@ -355,7 +375,7 @@ function App() {
         executePlantBatch(queueToProcess);
       }, 500);
     },
-    [account.address, startPlanting, executePlantBatch, isProcessingBatch]
+    [account.address, startPlanting, executePlantBatch]
   );
 
   // Harvest single plot
