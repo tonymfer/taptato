@@ -24,6 +24,25 @@ const vt323 = VT323({
 export const metadata: Metadata = {
   title: "TapTato - Zero-Popup Potato Farming",
   description: "Farm potatoes with Base Account Sub Accounts - no popups!",
+  openGraph: {
+    title: "TapTato - Zero-Popup Potato Farming",
+    description: "Farm potatoes with Base Account Sub Accounts - no popups!",
+    images: [
+      {
+        url: "/thumbnail.png",
+        width: 950,
+        height: 1065,
+        alt: "TapTato Game Screenshot",
+      },
+    ],
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "TapTato - Zero-Popup Potato Farming",
+    description: "Farm potatoes with Base Account Sub Accounts - no popups!",
+    images: ["/thumbnail.png"],
+  },
 };
 
 export default function RootLayout(props: { children: ReactNode }) {
