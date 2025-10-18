@@ -139,7 +139,7 @@ export function PlotTile({
               alt={stateLabels[state]}
               width={130}
               height={130}
-              className={`pixelated ${state === "ripe" ? "animate-glint" : ""} ${isPlanting ? "animate-pulse" : ""} origin-bottom`}
+              className={`pixelated ${state === "ripe" ? "animate-glint" : ""} ${isPlanting ? "animate-pulse" : ""} ${state === "seed" ? "origin-center" : "origin-bottom"}`}
               priority
             />
           </div>
@@ -167,7 +167,7 @@ export function PlotTile({
           className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity cursor-pointer"
           onClick={handleClearClick}
         >
-          <div className="font-pixel-body text-xl text-red-400 bg-red-900/80 px-4 py-2 rounded-lg border-4 border-red-500 shadow-2xl">
+          <div className="font-pixel-body text-xl text-white bg-red-700 px-4 py-2">
             Clear
           </div>
         </div>
@@ -175,7 +175,7 @@ export function PlotTile({
 
       {canHarvest && (
         <div
-          className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity cursor-pointer bg-black/60 rounded"
+          className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity cursor-pointer"
           onClick={handleHarvestClick}
         >
           <div className="font-pixel-body text-2xl text-amber-400 bg-amber-900/80 px-6 py-3 rounded-lg border-4 border-amber-500 shadow-2xl">

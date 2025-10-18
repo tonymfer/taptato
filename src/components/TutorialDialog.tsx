@@ -54,6 +54,48 @@ export function TutorialDialog({ open, onClose }: TutorialDialogProps) {
             </p>
           </div>
 
+          {/* Potato Vault System */}
+          <div className="bg-amber-900/30 p-4 rounded-lg border-2 border-amber-600">
+            <h3 className="font-pixel-subtitle text-lg text-amber-400 mb-3">
+              💰 Your Potato Vault
+            </h3>
+            <div className="space-y-3 text-sm">
+              <div className="bg-amber-950/40 p-3 rounded">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-base">🏪</span>
+                  <strong className="text-amber-300">Potato Barn (Storage)</strong>
+                </div>
+                <p className="text-gray-300 ml-6">
+                  Your main vault for USDC. Keeps your funds safe!
+                </p>
+              </div>
+              <div className="text-center text-amber-500 text-xl">↓</div>
+              <div className="bg-green-950/40 p-3 rounded">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-base">👝</span>
+                  <strong className="text-green-300">Field Pouch (Active)</strong>
+                </div>
+                <p className="text-gray-300 ml-6">
+                  Your working wallet for planting potatoes.
+                </p>
+              </div>
+              <div className="bg-blue-950/40 p-3 rounded mt-3">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-base">🚜</span>
+                  <strong className="text-blue-300">Smart Refill (Auto-Magic!)</strong>
+                </div>
+                <p className="text-gray-300 ml-6">
+                  When your Field Pouch runs low during planting, we automatically move USDC from your Barn. No manual transfers needed!
+                </p>
+              </div>
+              <div className="mt-3 p-2 bg-green-900/20 rounded border border-green-600/30">
+                <p className="text-green-300 text-xs">
+                  💡 <strong>How it works:</strong> Faucet → Barn → Pouch → Plant! The Barn stores funds safely, and the Pouch handles all transactions.
+                </p>
+              </div>
+            </div>
+          </div>
+
           {/* Growth Stages */}
           <div>
             <h3 className="font-pixel-subtitle text-lg text-green-400 mb-3">
@@ -181,8 +223,9 @@ export function TutorialDialog({ open, onClose }: TutorialDialogProps) {
               💡 Pro Tips
             </h3>
             <ul className="text-base space-y-2 text-gray-300">
-              <li>✨ First plant: 1 popup for Auto Spend Permission</li>
-              <li>🚀 After that: No popups! Plant as many as you want</li>
+              <li>✨ Click "Stock Up" to fill your Potato Barn with USDC</li>
+              <li>🚜 Smart Refill auto-loads your Field Pouch when needed</li>
+              <li>🚀 After first plant: No popups! Plant as many as you want</li>
               <li>📦 Click 3 plots quickly = Batch transaction!</li>
               <li>⏱️ Perfect timing = 2x profit!</li>
             </ul>
