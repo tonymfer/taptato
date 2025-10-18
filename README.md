@@ -1,5 +1,5 @@
 # TapTato 🥔
-<img width="739" height="902" alt="Screenshot 2025-10-17 at 23 11 53" src="https://github.com/user-attachments/assets/8cdcc9d0-166f-4bbb-b9f9-8a8e40f543c3" />
+<img width="950" height="1065" alt="Screenshot 2025-10-18 at 16 20 12" src="https://github.com/user-attachments/assets/db53fefb-24a0-4a68-af6d-d3608225a3cb" />
 
 **Zero-Popup Potato Farming on Base**
 
